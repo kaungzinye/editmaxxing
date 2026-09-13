@@ -14,7 +14,7 @@ The creator starts with an optional script in an editable teleprompter or record
 
 Each spoken hook has four visual hook title variations, giving 16 spoken-hook/title combinations. Vanessa supplies visual title templates with explicit named slots. Astra fills those slots using transcript evidence. The backend assembles the title while preserving the template's fixed wording. A slot without supporting transcript evidence is marked for the creator to fill. Its variation stays out of automatic export until the creator supplies the value. The creator can edit the resulting visual title manually.
 
-The app presents one complete body cut. The creator selects spoken-hook/title combinations to preview and export, each using that shared body cut. A selected combination identifies its spoken hook and visual title. The creator can select any subset of the 16 combinations, with one selected by default. Export produces a separate MP4 for each selected combination. Body editing is available while the creator prepares and records hooks. Attach recorded hooks to the current saved body edit.
+The app presents one complete body cut. The creator selects spoken-hook/title combinations to preview and export, each using that shared body cut. A selected combination identifies its spoken hook and visual title. The creator can select any subset of the 16 combinations, with one selected by default. Export produces a separate MP4 for each selected combination. Body editing is available while the creator prepares and records hooks. Attach recorded hooks to the current saved body edit. Prepend the selected spoken hook to the body at timeline zero, regardless of source recording order. Each combination plays its selected hook first, then the shared body. Recalculate body and caption timeline offsets using the selected hook duration. The visual hook title begins at timeline zero.
 
 ## Teleprompter
 
@@ -88,6 +88,7 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 - A continuous body recording produces one complete body cut and four spoken hook proposals, each with four slot-filled visual title options.
 - Starting-script and free-recording flows both reach body analysis. The hook teleprompter presents four editable suggestions and captures their takes.
 - Body edits remain available during hook preparation and persist when recorded hooks attach.
+- Hooks recorded after the body play at the start of preview and export. Switching hooks places the selected hook before the body and recalculates body and caption offsets.
 - Any selected subset of the 16 combinations produces separate MP4 files using the saved body cut.
 - Selected combinations reuse the body cut. Manual title and caption edits, additions, and deletions survive save and render.
 - Trim and reorder survive reload and appear in the export.

@@ -63,3 +63,7 @@ Caption editing requires persisted overrides and deletion records, anchored to c
 Starting scripts and teleprompter preferences are editable app state. Hook recording submits ordered hook IDs and the creator's edited suggestion text alongside footage so matching uses the words the creator intends to say.
 
 Hook ingestion attaches recorded takes to the project's hook candidates and preserves the current saved body clip list. Keep body editing available during hook preparation. Applying a hook selection uses the plan revision check. Each render request accepts any nonempty subset of valid spoken-hook/title combinations, with unique combination IDs. Produce one MP4 per selection and associate every output with its combination and captured body revision.
+
+## Hook placement
+
+Each assembled combination orders the selected recorded hook clips first, starting at timeline zero, followed by the saved body clips. Source recording order is independent of playback order. Selecting another hook replaces the leading hook clips and preserves body clip order and source ranges. Recompute body and caption timeline offsets from the selected hook duration. Anchor the visual hook title to timeline zero. Apply the same assembly rule to phone preview, draft render, and each exported combination.
