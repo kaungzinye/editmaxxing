@@ -6,6 +6,8 @@ FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. W
 
 The API lives in `backend/`. Vanessa's integrated creator app lives in `clients/mobile/`; the endpoint lab lives in `clients/endpoint-lab/`. Both apps share `clients/shared/`. Rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
 
+The creator app connects directly to the hosted API and records portrait 1080p video in a 9:16 frame. Start it with `npm run start --workspace editmaxxing-frontend`; its native audio extractor requires the iOS development build. [Mobile setup](clients/mobile/README.md) covers device builds and local API configuration. Railway deploys the backend from `main`.
+
 ## Run locally
 
 Install Python 3.12–3.14, [uv](https://docs.astral.sh/uv/), and ffmpeg. From this directory:
