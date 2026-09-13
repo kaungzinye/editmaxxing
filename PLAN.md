@@ -10,15 +10,23 @@ Target finished length: 90 to 180 seconds, default 120 seconds. The target appli
 
 ## Recording and hooks
 
-The creator films the body first, with multiple lines, retakes, pauses, and flubs in one continuous recording. The creator tries their own hook ideas. The app uses the body and those ideas to propose four spoken hook variations. The initial recording includes the creator's spoken hook attempts. Astra writes four spoken hook suggestions grounded in the body and those attempts. The creator records the suggestions in one additional continuous clip. The backend identifies and trims the four hook takes from that clip. Spoken suggestions permit original wording grounded in the recording.
+The creator starts with an optional script in an editable teleprompter or records the body freely. The initial continuous recording contains the body first, then spoken hook attempts separated by a clear pause. It can contain multiple lines, retakes, pauses, and flubs. The app uses the body and those ideas to propose four spoken hook variations. The initial recording includes the creator's spoken hook attempts. Astra writes four spoken hook suggestions grounded in the body and those attempts. The creator edits the four suggestions in the teleprompter and records them in one additional continuous clip, advancing through the suggestions in order. The backend identifies and trims the four hook takes from that clip. Spoken suggestions permit original wording grounded in the recording.
 
 Each spoken hook has four visual hook title variations, giving 16 spoken-hook/title combinations. Vanessa supplies visual title templates with explicit named slots. Astra fills those slots using transcript evidence. The backend assembles the title while preserving the template's fixed wording. A slot without supporting transcript evidence is marked for the creator to fill. Its variation stays out of automatic export until the creator supplies the value. The creator can edit the resulting visual title manually.
 
-The app presents one complete body cut. The creator selects spoken-hook/title combinations to preview and export, each using that shared body cut. A selected combination identifies its spoken hook and visual title.
+The app presents one complete body cut. The creator selects spoken-hook/title combinations to preview and export, each using that shared body cut. A selected combination identifies its spoken hook and visual title. The creator can select any subset of the 16 combinations, with one selected by default. Export produces a separate MP4 for each selected combination. Body editing is available while the creator prepares and records hooks. Attach recorded hooks to the current saved body edit.
+
+## Teleprompter
+
+The recording screen supports an optional creator-supplied starting script. A creator can type or paste text, edit it, and read it while recording. Free recording is available from the same flow.
+
+After body analysis, load the four spoken hook suggestions into the teleprompter. The creator can edit their wording before recording. Present one hook at a time with a visible hook number and next control, while recording one continuous clip. Preserve the edited suggestion text for take matching.
+
+Keep the first implementation focused on readable text near the camera, adjustable text size and scroll speed, start/pause scrolling, and recording controls. Per-hook regeneration is stretch work. The editable teleprompter provides the core suggestion-editing control.
 
 ## Architecture
 
-- Expo Router app with upload, progress, projects, timeline, playback, and export screens.
+- Expo Router app with camera/teleprompter, upload, progress, projects, timeline, playback, and export screens.
 - Proposed deployment: FastAPI and ffmpeg in one Railway container, with a persistent volume for project files and job state. Railway hosts the API, processing worker, storage, and renders. Local development runs on the laptop. Confirm hosting after checking account eligibility and resource needs.
 - Hosted `whisper-1` transcription with word timestamps. `gpt-6-astra` handles semantic analysis with transcript text and timestamped sampled frames.
 - Expo web export provides the judge's deployed app link. Validate native dependencies in Expo Go and verify the EAS Update distribution route on the demo phones.
@@ -26,7 +34,7 @@ The app presents one complete body cut. The creator selects spoken-hook/title co
 
 ## Upload and normalization
 
-Prioritize one continuous body recording containing multiple lines and retakes. The initial recording supports up to 20 minutes of footage. Set a separate byte limit from a representative phone file. The project also accepts one additional continuous recording of the four suggested hooks. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
+Prioritize one continuous body recording containing multiple lines and retakes. The initial recording supports up to 20 minutes of footage. Demo capture uses portrait 1080p at 30 fps. Set a separate byte limit from a representative phone file. The project also accepts one additional continuous recording of the four suggested hooks. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
 
 Use a 1080x1920 output canvas at 30 fps, center-cropping to fill. Show the same crop in preview. Provider keys live in backend environment variables. Use opaque project access tokens and signed media URLs for the public demo. Set a storage quota and configurable project retention.
 
@@ -67,7 +75,7 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 ## Ownership and checkpoints
 
 - Kaung: upload, storage, transcription, Astra analysis, cut construction, captions, render, then timeline integration.
-- Vanessa: Expo screens, gestures, playback, projects, visual hook title UI, web deployment.
+- Vanessa: Expo screens, camera and teleprompter, gestures, playback, projects, visual hook title UI, visual title templates, web deployment.
 - By 11:00: agree on the contract, verify model access, select the Expo SDK, and confirm Railway storage.
 - By 12:30: backend processes short footage, app edits fixture data, visual hook title selection is ready.
 - By 13:30: connect upload, job polling, plan save, and render. Deploy.
@@ -78,6 +86,9 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 ## Acceptance checks
 
 - A continuous body recording produces one complete body cut and four spoken hook proposals, each with four slot-filled visual title options.
+- Starting-script and free-recording flows both reach body analysis. The hook teleprompter presents four editable suggestions and captures their takes.
+- Body edits remain available during hook preparation and persist when recorded hooks attach.
+- Any selected subset of the 16 combinations produces separate MP4 files using the saved body cut.
 - Selected combinations reuse the body cut. Manual title and caption edits, additions, and deletions survive save and render.
 - Trim and reorder survive reload and appear in the export.
 - Captions align after clips move, shrink, or repeat. Hook text begins at timeline zero.
@@ -95,12 +106,12 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 5. 1:00 to 1:15: export and play the MP4 from Photos.
 6. 1:15 to 1:30: explain Astra's take grouping, frame scores, ranking, visual hook titles, and emphasis selections.
 
-## Remaining inputs
+## Implementation prerequisites
 
 - A project API key with verified `gpt-6-astra` access. The task environment has no `OPENAI_API_KEY` configured.
 - Vanessa's visual hook title templates and permitted talking-head footage. Kaung settles the filming schedule.
-- Representative phone file size for the byte limit, recording quality, and the caption style reference.
-- Exact caption reference. The default above supports initial layout work.
+- Measure a representative portrait 1080p/30 phone file to set the byte limit.
+- Use the caption default specified above for implementation.
 - Railway and Expo deployment access.
 
-Stretch work after the core flow passes: color controls, sounds, and general multi-file body uploads.
+The product scope is settled. Implementation choices use the defaults in this plan. Stretch work after the core flow passes: per-hook suggestion regeneration, color controls, sounds, and general multi-file body uploads.

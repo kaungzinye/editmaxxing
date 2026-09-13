@@ -1,13 +1,13 @@
 # API contract
 
-Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body and spoken hook attempts. A second continuous recording supplies the four suggested spoken hooks. Each uploaded file gets a normalized editing source.
+Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body first and spoken hook attempts afterward. The app supports an optional editable starting script in its teleprompter. A second continuous recording supplies the four suggested spoken hooks. Each uploaded file gets a normalized editing source.
 
 ## Routes
 
 | Method and route | Request | Response |
 | --- | --- | --- |
 | `POST /projects` | Multipart `file`, `target_duration_ms` | 202 with `project_id`, `project_token`, `job_id` |
-| `POST /projects/{id}/hooks/recording` | Multipart `file` containing four recorded hook suggestions | 202 with job ID for hook transcription and take matching |
+| `POST /projects/{id}/hooks/recording` | Multipart `file` and ordered hook IDs with edited suggestion text, containing four recorded hooks | 202 with job ID for hook transcription and take matching |
 | `GET /jobs/{id}` | Project bearer token | Job state, stage, progress, result or error |
 | `GET /projects/{id}` | Project bearer token | Sources, words, analysis, hook candidates, current plan |
 | `POST /projects/{id}/analysis` | Project bearer token | 202 with job ID, supports analysis retry |
@@ -52,8 +52,14 @@ The synthetic fixture contains clip and caption data. Integration supplies the c
 
 ## Editor and hook workflow details
 
-The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator records all four in one additional continuous clip and submits it through `/hooks/recording`. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
+The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator edits suggestions in the teleprompter and records all four in one additional continuous clip and submits it through `/hooks/recording`. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
 
 Store visual title template IDs, slot values, and missing slot names with analysis. A slot without supporting transcript evidence requires creator input. Exclude incomplete variations from automatic export and validate readiness on render requests. The plan holds the creator's editable overlay. A null overlay represents deletion. `hold_ms` is editable and defaults to 12000. Each render request selects one or more spoken-hook/title combinations and creates an output for each against the captured body revision.
 
 Caption editing requires persisted overrides and deletion records, anchored to clip occurrences, alongside automatic captions. User-added caption words may have null transcript word IDs. The save implementation must preserve these edits when deriving captions. The shared types describe canonical captions, with the edit-request schema to be specified during implementation.
+
+## Teleprompter and concurrent body editing
+
+Starting scripts and teleprompter preferences are editable app state. Hook recording submits ordered hook IDs and the creator's edited suggestion text alongside footage so matching uses the words the creator intends to say.
+
+Hook ingestion attaches recorded takes to the project's hook candidates and preserves the current saved body clip list. Keep body editing available during hook preparation. Applying a hook selection uses the plan revision check. Each render request accepts any nonempty subset of valid spoken-hook/title combinations, with unique combination IDs. Produce one MP4 per selection and associate every output with its combination and captured body revision.
