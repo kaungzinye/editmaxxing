@@ -1,14 +1,16 @@
 /** Source ranges are half-open. Time values are integer milliseconds. */
-/** Validate integer range 90000..160000 at the API boundary. */
+/** Validate integer range 90000..180000 at the API boundary. */
 export type TargetDuration = number;
 export interface VisualHookTitle {
   id: string;
   template_id: string;
+  slots: Record<string, string>;
   text: string;
 }
 export interface SpokenHook {
   id: string;
-  take_id: string;
+  proposed_text: string;
+  take_id: string | null;
   visual_titles: [VisualHookTitle, VisualHookTitle, VisualHookTitle, VisualHookTitle];
 }
 export type Position = { x: number; y: number };
@@ -27,8 +29,8 @@ export interface Caption {
   clip_id: string;
   start_ms: number;
   end_ms: number;
-  words: { word_id: string; text: string }[];
-  emphasis_word_id: string;
+  words: { word_id: string | null; text: string }[];
+  emphasis_word_id: string | null;
 }
 export interface Plan {
   schema_version: 1;
@@ -36,17 +38,17 @@ export interface Plan {
   target_duration_ms: TargetDuration;
   duration_ms: number;
   target_met: boolean;
-  selected_hook_id: string;
-  selected_visual_title_id: string;
+  selected_hook_id: string | null;
+  selected_visual_title_id: string | null;
   clips: Clip[];
   dropped_lines: { line_id: string; text: string; reason: string }[];
   dead_space: { enabled: boolean; threshold_ms: 700; retain_ms: 250 };
   hook_overlay: {
     text: string;
     position: Position;
-    hold_ms: 12000;
+    hold_ms: number;
     fade_ms: 300;
-  };
+  } | null;
   caption_style: { preset: "classic_box"; position: Position };
   captions: Caption[];
 }
