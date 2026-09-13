@@ -26,7 +26,7 @@ The app stores project IDs and tokens locally. Hash tokens on the server. Serve 
 
 ## Job behavior
 
-States: `queued`, `running`, `succeeded`, `failed`. Source audio and video upload readiness are tracked independently from job state. Stages: `normalize`, `transcribe`, `analyze`, `plan`, `render`. Progress is an estimate between 0 and 1. Poll every two seconds while the app is active.
+States: `queued`, `running`, `succeeded`, `failed`, `cancelled`. Source audio and video upload readiness are tracked independently from job state. Stages include `normalize`, `transcribe`, `analyze`, `waiting_video`, `review_boundaries`, `plan`, `render`. Progress is an estimate between 0 and 1. Poll every two seconds while the app is active.
 
 Initial analysis returns the body draft and hook suggestions together and initializes an empty timeline once. Subsequent analysis returns a proposal with its base revision. Hook analysis updates candidate records independently. Ranking returns a proposed plan and its base revision. Rendering returns a signed URL, expiration, output kind, and rendered plan revision. Persist job state. On worker restart, mark interrupted work failed with a retryable error. Run one worker for the hackathon deployment.
 
@@ -158,3 +158,11 @@ A spoken hook contains `id`, `proposed_text`, `take_id`, `visual_titles`, `candi
 | `POST /projects/{id}/sources/{source_id}/fixture` | Enable synthetic analysis for a registered source before audio upload; requires `ENABLE_FIXTURES=true` |
 
 Fixture mode labels synthetic transcript and editorial output explicitly. Its upload verification, normalization, canonical plan handling, and rendering process real media. The endpoint lab walkthrough and native validation boundaries are in [CLIENT.md](CLIENT.md).
+
+## Integrated cut boundary review
+
+Audio upload starts transcription and editorial selection. An analysis job with `state=queued` and `stage=waiting_video` retains its transcript and editorial results while the original uploads. Video normalization resumes that same job automatically. Clients start audio and video uploads together and poll the analysis job through `review_boundaries` to `succeeded` before displaying the initial draft. Waiting jobs support cancellation and survive process restart.
+
+For each candidate clip start and end, the worker extracts four frames before and four at/after the boundary at 30 fps. Each contact sheet labels canonical source times. Astra receives nearby transcript words, selection reasons, cut positions, allowed adjustment ranges and the contact sheets in batches of up to 16 boundaries. Code accepts adjustments within 120 ms that preserve included words, exclude neighboring speech and respect adjacent clip ranges. Decisions below 0.7 confidence and out-of-range adjustments retain the candidate and set `needs_review=true`. Captions and timeline duration derive from the adjusted clips.
+
+Both body analysis and recorded-hook matching run this review before publishing their clips. Duration ranking reviews generated body candidates. `POST /visual-review` reviews the body boundaries in its captured plan and returns a proposal for explicit application. Boundary-review results are cached by source identity, timing, transcript context, candidate ranges and model. The project `boundary_reviews` map contains decisions, applied times, confidence, reasons and sampled timestamps. Frames are temporary processing files.

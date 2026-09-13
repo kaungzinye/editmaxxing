@@ -11,7 +11,6 @@ import sys
 import tempfile
 import wave
 from array import array
-from hashlib import sha256
 from pathlib import Path
 
 from PIL import ImageFont
@@ -753,31 +752,69 @@ def render_plan(plan: dict, sources: dict[str, dict], output_path: str | Path, k
     }
 
 
-def sample_frames(
-    path: str | Path, source_id: str, timestamps_ms: list[int], output_dir: str | Path, max_frames: int = 8
-) -> list[dict]:
-    metadata = probe(path)
-    if not metadata["has_video"]:
-        return []
-    directory = Path(output_dir)
-    directory.mkdir(parents=True, exist_ok=True)
-    frames = []
-    for number, timestamp in enumerate(list(dict.fromkeys(timestamps_ms))[: min(max_frames, 8)]):
-        timestamp = max(0, min(metadata["duration_ms"] - 34, timestamp))
-        filename = directory / f"{sha256(source_id.encode()).hexdigest()[:12]}-{number}-{timestamp}.jpg"
-        _ffmpeg(
+def boundary_contact_sheet(
+    path: str | Path, boundary: dict, duration_ms: int, output_dir: str | Path
+) -> dict:
+    """Decode eight consecutive 30 fps source frames in one seek and label their canonical times."""
+    from PIL import Image, ImageDraw
+
+    timestamp = boundary["timestamp_ms"]
+    pivot = math.ceil(timestamp * FPS / 1000)
+    last = max(0, math.ceil(duration_ms * FPS / 1000) - 1)
+    indices = [max(0, min(last, pivot + offset)) for offset in range(-4, 4)]
+    first, count = min(indices), max(indices) - min(indices) + 1
+    size = 192
+    result = _run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-nostdin",
+            "-threads",
+            "1",
             "-ss",
-            f"{timestamp / 1000:.6f}",
+            f"{first / FPS:.9f}",
             "-i",
             str(path),
+            "-an",
             "-frames:v",
-            "1",
+            str(count),
             "-vf",
-            "scale=640:640:force_original_aspect_ratio=decrease",
-            "-q:v",
-            "5",
-            str(filename),
-        )
-        if filename.is_file() and filename.stat().st_size <= 512 * 1024:
-            frames.append({"path": str(filename), "timestamp_ms": timestamp, "source_id": source_id})
-    return frames
+            f"scale={size}:{size}:force_original_aspect_ratio=decrease,pad={size}:{size}:(ow-iw)/2:(oh-ih)/2",
+            "-threads",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "pipe:1",
+        ],
+        timeout=30,
+        binary=True,
+    )
+    frame_bytes = size * size * 3
+    if len(result.stdout) != count * frame_bytes:
+        raise MediaError("Boundary review needs every requested source frame.")
+    sheet = Image.new("RGB", (size * 4, (size + 24) * 2), "black")
+    draw = ImageDraw.Draw(sheet)
+    timestamps = []
+    for tile, frame_index in enumerate(indices):
+        offset = (frame_index - first) * frame_bytes
+        frame = Image.frombytes("RGB", (size, size), result.stdout[offset : offset + frame_bytes])
+        x, y = tile % 4 * size, tile // 4 * (size + 24)
+        sheet.paste(frame, (x, y))
+        ms = round(frame_index * 1000 / FPS)
+        timestamps.append(ms)
+        side = "before" if frame_index * 1000 / FPS < timestamp else "at/after"
+        draw.text((x + 4, y + size + 4), f"{ms} ms {side}", fill="white")
+    destination = Path(output_dir) / f"{boundary['id']}.jpg"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(destination, quality=80)
+    return {
+        "path": str(destination),
+        "source_id": boundary["source_id"],
+        "timestamp_ms": timestamp,
+        "boundary_id": boundary["id"],
+        "frame_timestamps_ms": timestamps,
+    }

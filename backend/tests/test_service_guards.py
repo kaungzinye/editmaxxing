@@ -131,6 +131,10 @@ def test_visual_review_requires_current_video_and_captures_plan(lab, tmp_path):
     project = fixture_analyzed(lab, tmp_path)
     route = f"/api/v1/projects/{pid}/visual-review"
     body = {"source_id": "body", "base_revision": project["plan"]["revision"]}
+    with app.state.service.store.tx() as db:
+        p = app.state.service.require(db, pid)
+        p["sources"]["body"]["video_state"] = "pending"
+        app.state.service.store.save(db, pid, p)
     assert client.post(route, json=body).status_code == 409
     with app.state.service.store.tx() as db:
         p = app.state.service.require(db, pid)

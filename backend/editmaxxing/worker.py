@@ -9,6 +9,7 @@ import shutil
 import tempfile
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .models import HookScript, Template, Timing, Word
@@ -17,6 +18,10 @@ from .service import Problem
 from .store import uid
 
 log = logging.getLogger(__name__)
+
+
+class WaitingForVideo(Exception):
+    pass
 
 
 class Worker:
@@ -115,7 +120,9 @@ class Worker:
 
     def run_once(self):
         with self.store.tx() as db:
-            row = db.execute("SELECT data FROM jobs WHERE state='queued' ORDER BY created LIMIT 1").fetchone()
+            row = db.execute(
+                "SELECT data FROM jobs WHERE state='queued' AND json_extract(data, '$.stage') != 'waiting_video' ORDER BY created LIMIT 1"
+            ).fetchone()
             if row is None:
                 return False
             job = json.loads(row[0])
@@ -130,6 +137,12 @@ class Worker:
                 if current["state"] == "running":
                     current.update(state="succeeded", progress=1, result=result, error=None)
                     self.store.put_job(db, current)
+        except WaitingForVideo:
+            with self.store.tx() as db:
+                self.publishing_project(db, job)
+                current = self.store.job(db, job["id"])
+                current.update(state="queued", stage="waiting_video", progress=0.55)
+                self.store.put_job(db, current)
         except Exception as exc:  # noqa: BLE001 - each job records its failure and releases the queue
             code = getattr(exc, "code", "processing_failed")
             message = getattr(exc, "message", None)
@@ -249,6 +262,13 @@ class Worker:
                     },
                 )
                 s["uploads"][up["upload_id"]]["state"] = "complete"
+                for row in db.execute(
+                    "SELECT data FROM jobs WHERE project_id=? AND state='queued'", (p["project_id"],)
+                ).fetchall():
+                    waiting = json.loads(row[0])
+                    if waiting["stage"] == "waiting_video" and waiting["payload"].get("source_id") == sid:
+                        waiting["stage"] = "analyze"
+                        self.store.put_job(db, waiting)
                 self.store.save(db, p["project_id"], live)
                 published = True
             shutil.rmtree(
@@ -348,6 +368,32 @@ class Worker:
                     words, [HookScript(**x) for x in source["hook_scripts"]]
                 ).model_dump()
             )
+            self.cache_editorial(
+                job,
+                key,
+                {
+                    "source_id": sid,
+                    "version": PROMPT_VERSION,
+                    "matches": matches,
+                    "fixture": source.get("fixture", False),
+                },
+            )
+            self.require_review_video(job, sid)
+            candidates = {}
+            for match in matches["matches"]:
+                if match["word_ids"]:
+                    take_id = f"t_{hashlib.sha256((sid + match['hook_id'] + json.dumps(match['word_ids'])).encode()).hexdigest()[:20]}"
+                    take = {
+                        "id": take_id,
+                        "line_id": match["hook_id"],
+                        "word_ids": match["word_ids"],
+                        "role": "hook",
+                        "reason": match["reason"],
+                    }
+                    candidates[match["hook_id"]] = clips_for_take(
+                        take, p["words"], p["sources"], {sid: source.get("metrics", {}).get("silences", [])}
+                    )
+            reviewed = self.review_cuts(job, source, [c for clips in candidates.values() for c in clips])
             self.checkpoint(job, "plan", 0.85)
             with self.store.tx() as db:
                 live = self.publishing_project(db, job)
@@ -374,13 +420,18 @@ class Worker:
                         "source_id": sid,
                         "confidence": match["confidence"],
                         "reason": match["reason"],
+                        "clips": [c for c in reviewed if c["take_id"] == take_id],
                     }
                     hook.setdefault("candidates", [])
-                    if not any(c["take_id"] == take_id for c in hook["candidates"]):
+                    existing = next((c for c in hook["candidates"] if c["take_id"] == take_id), None)
+                    if existing is None:
                         hook["candidates"].append(candidate)
+                    else:
+                        existing.update(candidate)
                     if hook.get("take_id") is None and match["confidence"] >= 0.65:
                         hook["take_id"] = take_id
-                        hook["clips"] = clips_for_take(take, live["words"], live["sources"])
+                    if hook.get("take_id") == take_id:
+                        hook["clips"] = candidate["clips"]
                 live["analysis"][key] = {
                     "source_id": sid,
                     "version": PROMPT_VERSION,
@@ -407,6 +458,17 @@ class Worker:
                 take["id"] = f"t_{hashlib.sha256((sid + take['id']).encode()).hexdigest()[:20]}"
                 take["line_id"] = f"l_{hashlib.sha256((sid + take['line_id']).encode()).hexdigest()[:20]}"
                 take["source_id"] = sid
+        self.cache_editorial(
+            job,
+            key,
+            {
+                "source_id": sid,
+                "version": PROMPT_VERSION,
+                "editorial": editorial,
+                "fixture": source.get("fixture", False),
+            },
+        )
+        self.require_review_video(job, sid)
         draft = compile_draft(
             source["words"],
             editorial,
@@ -418,6 +480,7 @@ class Worker:
                 c["source_end_ms"] - c["source_start_ms"] for c in base_plan["clips"] if c["role"] == "hook"
             ),
         )
+        draft["clips"] = self.review_cuts(job, source, draft["clips"])
         for field in ("caption_edits", "caption_style", "audio", "hook_overlay"):
             draft[field] = copy.deepcopy(base_plan[field])
         if base_plan.get("selected_hook_id"):
@@ -529,6 +592,11 @@ class Worker:
             {sid: s.get("metrics", {}).get("silences", []) for sid, s in p["sources"].items()},
             reserved_duration_ms=sum(c["source_end_ms"] - c["source_start_ms"] for c in hook_clips),
         )
+        reviewed = {}
+        for sid in dict.fromkeys(c["source_id"] for c in draft["clips"]):
+            candidates = [c for c in draft["clips"] if c["source_id"] == sid]
+            reviewed.update({c["id"]: c for c in self.review_cuts(job, p["sources"][sid], candidates)})
+        draft["clips"] = [reviewed[c["id"]] for c in draft["clips"]]
         for field in ("caption_edits", "caption_style", "audio"):
             draft[field] = copy.deepcopy(base_plan[field])
         draft.update(
@@ -552,8 +620,7 @@ class Worker:
         return {"proposal": proposal}
 
     def do_visual(self, job):
-        from .editing import canonicalize_plan, compile_draft
-        from .media import sample_frames
+        from .editing import canonicalize_plan
 
         p = self.project(job)
         source = self.service.source(p, job["payload"]["source_id"])
@@ -563,114 +630,25 @@ class Worker:
         words = [Word(**w) for w in source["words"]]
         if not words:
             raise Problem("analysis_pending", "Visual review needs the source transcript.", 409, True)
-        count = min(8, len(words))
-        timestamps = [
-            (
-                words[round(i * (len(words) - 1) / max(1, count - 1))].start_ms
-                + words[round(i * (len(words) - 1) / max(1, count - 1))].end_ms
-            )
-            // 2
-            for i in range(count)
+        draft = copy.deepcopy(base_plan)
+        candidates = [
+            c for c in draft["clips"] if c["source_id"] == source["source_id"] and c["role"] == "body"
         ]
-        key = hashlib.sha256(
-            json.dumps(
-                [
-                    "visual_review_v1",
-                    source["fingerprint"],
-                    source["audio_sha256"],
-                    source["audio_timing"],
-                    self.service.settings.editor_model,
-                    PROMPT_VERSION,
-                    timestamps,
-                    p["templates"],
-                    120000,
-                ],
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
-        stored = p["analysis"].get(key)
-        if stored:
-            editorial = stored["editorial"]
-            frame_count = stored["sampled_frame_count"]
-        else:
-            provider = get_provider(self.service.settings, fixture=source.get("fixture", False))
-            directory = self.store.directory(p["project_id"]) / "visual"
-            directory.mkdir(parents=True, exist_ok=True)
-            with tempfile.TemporaryDirectory(prefix="review-", dir=directory) as work:
-                frames = sample_frames(source["editing_path"], source["source_id"], timestamps, work)
-                if not frames:
-                    raise Problem(
-                        "frames_unavailable",
-                        "The recording needs readable video frames for visual review.",
-                        422,
-                    )
-                frame_count = len(frames)
-                self.checkpoint(job, "visual", 0.25)
-                editorial = provider.analyze(
-                    words, [Template(**t) for t in p["templates"]], 120000, frames=frames
-                ).model_dump()
-            for take in editorial["takes"]:
-                take["id"] = f"t_{hashlib.sha256((key + take['id']).encode()).hexdigest()[:20]}"
-                take["line_id"] = f"l_{hashlib.sha256((key + take['line_id']).encode()).hexdigest()[:20]}"
-                take["source_id"] = source["source_id"]
-        hooks = [copy.deepcopy(c) for c in base_plan["clips"] if c["role"] == "hook"]
-        draft = compile_draft(
-            source["words"],
-            editorial,
-            p["sources"],
-            base_plan["target_duration_ms"],
-            base_plan["dead_space"]["enabled"],
-            {source["source_id"]: source.get("metrics", {}).get("silences", [])},
-            reserved_duration_ms=sum(c["source_end_ms"] - c["source_start_ms"] for c in hooks),
-        )
-        available = [copy.deepcopy(c) for c in base_plan["clips"] if c["role"] == "body"]
-        for clip in draft["clips"]:
-            match = next(
-                (
-                    c
-                    for c in available
-                    if all(
-                        c[field] == clip[field] for field in ("source_id", "source_start_ms", "source_end_ms")
-                    )
-                ),
-                None,
-            )
-            if match:
-                clip["id"] = match["id"]
-                available.remove(match)
-        for field in (
-            "caption_edits",
-            "caption_style",
-            "audio",
-            "hook_overlay",
-            "selected_hook_id",
-            "selected_visual_title_id",
-        ):
-            draft[field] = copy.deepcopy(base_plan[field])
-        draft["clips"] = hooks + draft["clips"]
-        draft["revision"] = job["payload"]["base_revision"]
-        takes = {**p["takes"], **{take["id"]: take for take in editorial["takes"]}}
-        draft = canonicalize_plan(draft, p["words"], p["sources"], takes)
+        reviewed = self.review_cuts(job, source, candidates)
+        reviewed_by_id = {c["id"]: c for c in reviewed}
+        draft["clips"] = [reviewed_by_id.get(c["id"], c) for c in draft["clips"]]
+        draft = canonicalize_plan(draft, p["words"], p["sources"], p["takes"])
+        frame_count = len(candidates) * 16
         proposal = {
             "id": uid("proposal"),
             "base_revision": job["payload"]["base_revision"],
-            "analysis_refs": [key],
+            "analysis_refs": [],
             "plan": draft,
             "kind": "visual_review",
         }
         with self.store.tx() as db:
             live = self.publishing_project(db, job)
             self.service.source(live, source["source_id"])
-            live["takes"].update({take["id"]: take for take in editorial["takes"]})
-            live["analysis"][key] = {
-                "source_id": source["source_id"],
-                "version": PROMPT_VERSION,
-                "kind": "visual_review",
-                "frame_timestamps_ms": timestamps,
-                "sampled_frame_count": frame_count,
-                "editorial": editorial,
-                "fixture": source.get("fixture", False),
-            }
             live["proposals"].append(proposal)
             self.store.save(db, p["project_id"], live)
         return {
@@ -678,6 +656,91 @@ class Worker:
             "sampled_frame_count": frame_count,
             "fixture": source.get("fixture", False),
         }
+
+    def cache_editorial(self, job, key, analysis):
+        with self.store.tx() as db:
+            p = self.publishing_project(db, job)
+            p["analysis"][key] = analysis
+            self.store.save(db, p["project_id"], p)
+
+    def require_review_video(self, job, sid):
+        source = self.service.source(self.project(job), sid)
+        if source["video_state"] != "ready" or not source.get("editing_path"):
+            if job["kind"] == "analyze":
+                raise WaitingForVideo()
+            raise Problem("media_pending", "Cut review requires normalized source video.", 409, True)
+
+    def review_cuts(self, job, source, clips):
+        from .boundaries import BATCH_SIZE, REVIEW_VERSION, apply_review, candidate_boundaries
+        from .media import boundary_contact_sheet
+        from .models import BoundaryReview
+
+        if not clips:
+            return []
+        self.require_review_video(job, source["source_id"])
+        source = self.service.source(self.project(job), source["source_id"])
+        boundaries = candidate_boundaries(clips, source["words"], source["duration_ms"])
+        key = hashlib.sha256(
+            json.dumps(
+                [
+                    REVIEW_VERSION,
+                    source["fingerprint"],
+                    source["audio_sha256"],
+                    source["audio_timing"],
+                    source["timing"],
+                    self.service.settings.editor_model,
+                    source.get("fixture", False),
+                    boundaries,
+                ],
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        cached = self.project(job).get("boundary_reviews", {}).get(key)
+        if cached:
+            review = BoundaryReview.model_validate(cached["review"])
+        else:
+            started = time.monotonic()
+            provider = get_provider(self.service.settings, fixture=source.get("fixture", False))
+            directory = self.store.directory(job["project_id"]) / "boundaries"
+            directory.mkdir(parents=True, exist_ok=True)
+            decisions, sampled = [], []
+            with tempfile.TemporaryDirectory(prefix="review-", dir=directory) as work:
+                for offset in range(0, len(boundaries), BATCH_SIZE):
+                    self.checkpoint(job, "review_boundaries", 0.6 + 0.2 * offset / len(boundaries))
+                    batch = boundaries[offset : offset + BATCH_SIZE]
+                    with ThreadPoolExecutor(max_workers=4) as pool:
+                        frames = list(
+                            pool.map(
+                                lambda boundary: boundary_contact_sheet(
+                                    source["editing_path"], boundary, source["duration_ms"], work
+                                ),
+                                batch,
+                            )
+                        )
+                    self.checkpoint(job)
+                    result = provider.review_boundaries(batch, frames)
+                    # Validate full coverage before caching any provider result.
+                    apply_review(clips, batch, result)
+                    decisions.extend(result.decisions)
+                    sampled.extend({k: v for k, v in frame.items() if k != "path"} for frame in frames)
+                    for frame in frames:
+                        Path(frame["path"]).unlink(missing_ok=True)
+            review = BoundaryReview(decisions=decisions)
+            adjusted, evidence = apply_review(clips, boundaries, review)
+            with self.store.tx() as db:
+                p = self.publishing_project(db, job)
+                p.setdefault("boundary_reviews", {})[key] = {
+                    "source_id": source["source_id"],
+                    "version": REVIEW_VERSION,
+                    "review": review.model_dump(),
+                    "evidence": evidence,
+                    "frames": sampled,
+                    "fixture": source.get("fixture", False),
+                    "elapsed_seconds": round(time.monotonic() - started, 3),
+                }
+                self.store.save(db, job["project_id"], p)
+            return adjusted
+        return apply_review(clips, boundaries, review)[0]
 
     def range_metrics(self, job, project, source, start_ms, end_ms):
         from .media import audio_metrics

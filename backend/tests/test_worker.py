@@ -13,7 +13,17 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def workspace(tmp_path):
+def workspace(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "editmaxxing.media.boundary_contact_sheet",
+        lambda path, b, duration, output: {
+            "path": str(tmp_path / "sheet.jpg"),
+            "boundary_id": b["id"],
+            "source_id": b["source_id"],
+            "timestamp_ms": b["timestamp_ms"],
+            "frame_timestamps_ms": [b["timestamp_ms"]] * 8,
+        },
+    )
     app = create_app(
         Settings(storage_root=tmp_path / "data", worker_enabled=False, enable_fixtures=True, part_size=1000)
     )
@@ -66,6 +76,8 @@ def seed(workspace, *, hook=False, original=b"immutable original"):
             raw_audio_path="uploaded.wav",
             audio_sha256="b" * 64,
             audio_timing={"duration_ms": 160000},
+            video_state="ready",
+            editing_path="source.mp4",
             fixture=True,
             metrics={"silences": []},
         )
@@ -145,7 +157,7 @@ def test_cancel_between_checkpoint_and_analysis_publish_preserves_project(worksp
     assert result["state"] == "cancelled"
     p = client.get(f"/api/v1/projects/{pid}").json()
     assert p["plan"]["revision"] == 0 and p["plan"]["clips"] == []
-    assert p["analysis"] == {} and p["hooks"] == []
+    assert p["analysis"] and p["hooks"] == []
 
 
 def test_rank_snapshot_retains_caption_title_and_reserves_hook_duration(workspace):
@@ -286,23 +298,25 @@ def test_visual_review_returns_cached_revision_bound_proposal(workspace, monkeyp
         app.state.service.store.save(db, pid, p)
     calls = {"frames": 0, "provider": 0}
 
-    def frames(path, source_id, timestamps, output_dir):
+    def frames(path, boundary, duration_ms, output_dir):
         calls["frames"] += 1
-        assert len(timestamps) <= 8
-        return [
-            {"source_id": source_id, "timestamp_ms": timestamp, "path": "frame.jpg"}
-            for timestamp in timestamps
-        ]
+        return {
+            "source_id": "body",
+            "timestamp_ms": boundary["timestamp_ms"],
+            "path": "frame.jpg",
+            "boundary_id": boundary["id"],
+            "frame_timestamps_ms": [boundary["timestamp_ms"]] * 8,
+        }
 
-    analyze = FixtureProvider.analyze
+    review = FixtureProvider.review_boundaries
 
-    def visually_analyze(self, words, templates, target_duration_ms, frames=None):
+    def visually_review(self, boundaries, frames):
         calls["provider"] += 1
-        assert frames and all(frame["source_id"] == "body" for frame in frames)
-        return analyze(self, words, templates, target_duration_ms, frames)
+        assert len(frames) == len(boundaries) == 6
+        return review(self, boundaries, frames)
 
-    monkeypatch.setattr("editmaxxing.media.sample_frames", frames)
-    monkeypatch.setattr(FixtureProvider, "analyze", visually_analyze)
+    monkeypatch.setattr("editmaxxing.media.boundary_contact_sheet", frames)
+    monkeypatch.setattr(FixtureProvider, "review_boundaries", visually_review)
     for _ in range(2):
         response = client.post(
             f"/api/v1/projects/{pid}/visual-review", json={"base_revision": 1, "source_id": "body"}
@@ -314,4 +328,34 @@ def test_visual_review_returns_cached_revision_bound_proposal(workspace, monkeyp
         assert job["result"]["proposal"]["base_revision"] == 1
         assert job["result"]["proposal"]["kind"] == "visual_review"
         assert client.get(f"/api/v1/projects/{pid}").json()["plan"] == before
-    assert calls == {"frames": 1, "provider": 1}
+    assert calls == {"frames": 6, "provider": 1}
+
+
+def test_visual_review_batches_every_boundary_and_reuses_results(workspace, monkeypatch):
+    client, app, pid = workspace
+    seed(workspace)
+    with app.state.service.store.tx() as db:
+        p = app.state.service.require(db, pid)
+        p["sources"]["body"]["storage"]["original_verified"] = True
+        app.state.service.store.save(db, pid, p)
+    monkeypatch.setattr("editmaxxing.boundaries.BATCH_SIZE", 2)
+    calls = []
+    original = FixtureProvider.review_boundaries
+
+    def review(self, boundaries, frames):
+        calls.append([b["id"] for b in boundaries])
+        return original(self, boundaries, frames)
+
+    monkeypatch.setattr(FixtureProvider, "review_boundaries", review)
+    for _ in range(2):
+        response = client.post(
+            f"/api/v1/projects/{pid}/visual-review", json={"base_revision": 1, "source_id": "body"}
+        )
+        app.state.worker.run_once()
+        job = client.get("/api/v1/jobs/" + response.json()["job_id"]).json()
+        assert job["state"] == "succeeded", job
+    assert len(calls) == 3 and len({b for batch in calls for b in batch}) == 6
+    project = client.get(f"/api/v1/projects/{pid}").json()
+    record = next(iter(project["boundary_reviews"].values()))
+    assert len(record["frames"]) == len(record["evidence"]) == 6
+    assert record["elapsed_seconds"] >= 0

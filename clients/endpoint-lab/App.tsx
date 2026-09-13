@@ -251,6 +251,7 @@ export default function App() {
       const file = readFile(local.audio);
       const result = await api().request<JobCreated>(`${path()}/sources/${local.sourceId}/audio`, 'PUT', await file.read(0, file.size), { 'X-Content-SHA256': local.audio.sha256, 'X-Timing-Manifest': JSON.stringify(next.audioTiming) }); rememberJob(result);
     })}
+    <Text>Upload the original alongside audio. Analysis completes after the video is ready and each cut boundary receives visual review.</Text>
     {action('Retry project analysis', async () => rememberJob(await api().request<JobCreated>(`${path()}/analysis`, 'POST')))}
     <Text style={styles.section}>Resumable original upload</Text>
     <Text>{transfer}</Text>

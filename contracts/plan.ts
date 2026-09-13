@@ -44,7 +44,7 @@ export interface SpokenHook {
   candidates: HookCandidate[];
   clips: Clip[];
 }
-export interface HookCandidate { take_id: string; source_id: string; confidence: number; reason: string }
+export interface HookCandidate { take_id: string; source_id: string; confidence: number; reason: string; clips: Clip[] }
 export interface Take {
   id: string; source_id: string; line_id: string; word_ids: string[];
   role: "body" | "hook"; score: number; selected: boolean; reason: string; emphasis_word_ids: string[];
@@ -202,6 +202,7 @@ export interface ProjectState {
   sources: Record<string, SourceState>;
   words: Word[];
   analysis: Record<string, unknown>;
+  boundary_reviews: Record<string, BoundaryReviewRecord>;
   takes: Record<string, Take>;
   hooks: SpokenHook[];
   proposals: Proposal[];
@@ -210,6 +211,22 @@ export interface ProjectState {
   plan: Plan;
   templates: Template[];
   expires_at: number;
+}
+
+export interface BoundaryReviewRecord {
+  source_id: string;
+  version: string;
+  fixture: boolean;
+  elapsed_seconds: number;
+  review: { decisions: BoundaryDecision[] };
+  evidence: (BoundaryDecision & { candidate_ms: number; applied_ms: number; accepted: boolean; needs_review: boolean })[];
+  frames: { source_id: string; boundary_id: string; timestamp_ms: number; frame_timestamps_ms: number[] }[];
+}
+export interface BoundaryDecision {
+  boundary_id: string;
+  timestamp_ms: number;
+  confidence: number;
+  reason: string;
 }
 
 export interface ProjectCreate { name: string; target_duration_ms: TargetDuration }

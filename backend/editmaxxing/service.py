@@ -65,6 +65,7 @@ class Service:
             "sources": {},
             "words": [],
             "analysis": {},
+            "boundary_reviews": {},
             "takes": {},
             "hooks": [],
             "templates": [],

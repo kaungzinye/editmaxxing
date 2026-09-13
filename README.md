@@ -2,7 +2,7 @@
 
 Hosted backend: [API documentation](https://editmaxxing-production.up.railway.app/docs) and [health](https://editmaxxing-production.up.railway.app/healthz). [Acceptance evidence](docs/ACCEPTANCE.md) records local checks, the live Railway flow, and restart recovery.
 
-FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes four spoken hooks, fills supplied title templates, and gives advisory delivery feedback. Code constructs clip ranges, captions, revision-bound proposals, and immutable render snapshots.
+FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes four spoken hooks, fills supplied title templates, and gives advisory delivery feedback. Code constructs candidate clip ranges. Astra reviews four frames before and four at/after each boundary, then code validates timestamp adjustments and builds captions, revision-bound proposals, and immutable render snapshots.
 
 Kaung's implementation lives in `backend/`. The isolated Expo integration client lives in `clients/endpoint-lab`. Vanessa owns the production app, recording experience, timeline gestures, and visual title templates. All bundled UI and rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
 
@@ -31,7 +31,7 @@ Enter `http://localhost:8000` as the API origin. A phone needs the computer's LA
 
 ## Exercise the complete pipeline
 
-The live smoke creates explicitly synthetic spoken media using macOS `say`, then calls real Whisper/Astra and ffmpeg endpoints. It checks audio-first analysis, trim/reorder/caption saves, revision conflicts, hook attachment, verified upload retries, two draft combinations, one 1080p export, signed media, and delivery feedback.
+The live smoke creates explicitly synthetic spoken media using macOS `say`, then calls real Whisper/Astra and ffmpeg endpoints. It checks transcription and visual boundary review, trim/reorder/caption saves, revision conflicts, hook attachment, verified upload retries, two draft combinations, one 1080p export, signed media, and delivery feedback.
 
 ```sh
 uv run python scripts/smoke.py --base-url http://localhost:8000 --synthetic --output-dir artifacts/smoke

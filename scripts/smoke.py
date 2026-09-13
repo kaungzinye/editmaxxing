@@ -1,4 +1,4 @@
-"""Run a live audio-first API and render check using explicit synthetic spoken media."""
+"""Run a live visually reviewed API and render check using explicit synthetic spoken media."""
 
 import argparse
 import copy
@@ -229,11 +229,15 @@ class Smoke:
             "body",
         )
         body_manifest = prepare(body, self.directory / "body-prepared", source_id="smoke_body")
-        self.wait(self.audio(body_manifest))
+        body_job = self.audio(body_manifest)
+        self.wait(self.video(body_manifest))
+        self.wait(body_job)
         state = self.request("GET", self.project_path)
         self.check(
-            "Body draft is ready while original video is pending",
-            bool(state["plan"]["clips"]) and state["sources"]["smoke_body"]["video_state"] == "pending",
+            "Body draft includes visual boundary review",
+            bool(state["plan"]["clips"])
+            and bool(state.get("boundary_reviews"))
+            and state["sources"]["smoke_body"]["video_state"] == "ready",
         )
         self.check(
             "Body analysis supplies four hooks and sixteen title choices",

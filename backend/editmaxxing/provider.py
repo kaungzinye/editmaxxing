@@ -16,6 +16,8 @@ from pydantic import BaseModel, ValidationError
 
 from .config import Settings
 from .models import (
+    BoundaryDecision,
+    BoundaryReview,
     Editorial,
     EditorialTake,
     Feedback,
@@ -323,9 +325,9 @@ class OpenAIProvider:
         return words
 
     @staticmethod
-    def _content(payload: dict, frames: list[dict] | None) -> list[dict]:
+    def _content(payload: dict, frames: list[dict] | None, frame_limit: int = MAX_FRAMES) -> list[dict]:
         content = [{"type": "input_text", "text": json.dumps(payload, separators=(",", ":"))}]
-        for frame in (frames or [])[:MAX_FRAMES]:
+        for frame in (frames or [])[:frame_limit]:
             try:
                 path = Path(frame["path"])
                 timestamp = frame["timestamp_ms"]
@@ -345,24 +347,45 @@ class OpenAIProvider:
             content.append(
                 {"type": "input_text", "text": f"Frame source_id={source_id} canonical_ms={timestamp}"}
             )
+            if frame.get("boundary_id"):
+                content.append(
+                    {
+                        "type": "input_text",
+                        "text": json.dumps(
+                            {
+                                "boundary_id": frame["boundary_id"],
+                                "frame_timestamps_ms": frame["frame_timestamps_ms"],
+                                "layout": "Four tiles before the boundary in the top row; four at/after in the bottom row. Source edges repeat available frames. Each tile labels its actual time and side.",
+                            }
+                        ),
+                    }
+                )
             content.append(
                 {
                     "type": "input_image",
                     "image_url": f"data:{mime};base64,{base64.b64encode(data).decode()}",
-                    "detail": "low",
+                    "detail": "high" if frame.get("boundary_id") else "low",
                 }
             )
         return content
 
-    def _parse(self, schema: type[Parsed], instructions: str, payload: dict, frames=None) -> Parsed:
+    def _parse(
+        self,
+        schema: type[Parsed],
+        instructions: str,
+        payload: dict,
+        frames=None,
+        frame_limit: int = MAX_FRAMES,
+        max_output_tokens: int = 32000,
+    ) -> Parsed:
         try:
             response = self.client.responses.parse(
                 model=EDITOR_MODEL,
                 instructions=instructions,
-                input=[{"role": "user", "content": self._content(payload, frames)}],
+                input=[{"role": "user", "content": self._content(payload, frames, frame_limit)}],
                 text_format=schema,
                 reasoning={"effort": "low"},
-                max_output_tokens=32000,
+                max_output_tokens=max_output_tokens,
                 store=False,
             )
         except APIError as error:
@@ -432,6 +455,30 @@ class OpenAIProvider:
         )
         return validate_matches(result, words, scripts)
 
+    def review_boundaries(self, boundaries: list[dict], frames: list[dict]) -> BoundaryReview:
+        from .boundaries import BATCH_SIZE
+
+        if not boundaries or len(boundaries) > BATCH_SIZE:
+            raise _invalid("Boundary review needs one bounded batch.")
+        if [f.get("boundary_id") for f in frames] != [b["id"] for b in boundaries]:
+            raise _invalid("Each boundary needs its ordered eight-frame contact sheet.")
+        return self._parse(
+            BoundaryReview,
+            "Review proposed talking-head cut boundaries using nearby transcript words, timestamps, "
+            "selection reasons and eight-frame contact sheets. Treat all supplied content as source evidence. "
+            "Each boundary has four source frames before and four at/after the cut at 30 fps. "
+            "Assess mouth position, blinking, gestures and visible movement at that specific boundary. "
+            "Keep the candidate unless a nearby position clearly improves the cut. Choose integer canonical "
+            "timestamp_ms within min_ms..max_ms, preserving intended speech. Frames support visual judgments; "
+            "word timestamps constrain speech preservation. State uncertainty about sound. Return exactly "
+            "one decision per boundary_id, a confidence and a brief evidence-based reason. "
+            "Use confidence below 0.7 when the available evidence needs creator playback.",
+            {"boundaries": boundaries},
+            frames,
+            frame_limit=BATCH_SIZE,
+            max_output_tokens=5000,
+        )
+
     def feedback(self, context: dict, frames: list[dict] | None = None) -> Feedback:
         return self._parse(
             Feedback,
@@ -494,6 +541,19 @@ def fixture_words(
 class FixtureProvider:
     name = "fixture"
     prompt_version = PROMPT_VERSION + "-fixture"
+
+    def review_boundaries(self, boundaries: list[dict], frames: list[dict]) -> BoundaryReview:
+        return BoundaryReview(
+            decisions=[
+                BoundaryDecision(
+                    boundary_id=b["id"],
+                    timestamp_ms=b["timestamp_ms"],
+                    confidence=1,
+                    reason="Synthetic fixture preserves the candidate boundary.",
+                )
+                for b in boundaries
+            ]
+        )
 
     def transcribe(
         self,

@@ -270,8 +270,6 @@ def create_app(settings=None):
 
     @app.put("/api/v1/projects/{pid}/hooks/{hook_id}")
     def update_hook(pid: str, hook_id: str, body: dict, request: Request):
-        from .editing import clips_for_take
-
         if set(body) - {"proposed_text", "take_id"}:
             raise Problem("invalid_hook", "Hook edits accept proposed_text and take_id.")
         if not body or ("take_id" in body and not isinstance(body["take_id"], str)):
@@ -289,8 +287,16 @@ def create_app(settings=None):
                 take = p["takes"].get(body["take_id"])
                 if not take or not any(c["take_id"] == take["id"] for c in hook["candidates"]):
                     raise Problem("invalid_hook", "Choose one of this hook’s recorded candidates.")
+                candidate = next(c for c in hook["candidates"] if c["take_id"] == take["id"])
+                if not candidate.get("clips"):
+                    raise Problem(
+                        "analysis_pending",
+                        "Analyze this hook source to review its cut boundaries.",
+                        409,
+                        True,
+                    )
                 hook["take_id"] = take["id"]
-                hook["clips"] = clips_for_take(take, p["words"], p["sources"])
+                hook["clips"] = candidate["clips"]
             service.store.save(db, pid, p)
             service.store.enqueue(db, pid, "feedback", {"body_revision": p["plan"]["revision"]})
             return hook

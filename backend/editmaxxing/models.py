@@ -266,3 +266,14 @@ class Feedback(Model):
     text: str
     confidence: float = Field(ge=0, le=1)
     suggested_action: Literal["keep_take", "play_transition", "record_again"]
+
+
+class BoundaryDecision(Model):
+    boundary_id: Id
+    timestamp_ms: Millis
+    confidence: float = Field(ge=0, le=1)
+    reason: str = Field(max_length=300)
+
+
+class BoundaryReview(Model):
+    decisions: list[BoundaryDecision]

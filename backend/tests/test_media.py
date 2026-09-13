@@ -386,3 +386,31 @@ def test_rendered_caption_boundaries_show_one_event_after_clip_join(tmp_path):
         actual_pixels = caption_pixels(actual, bright)
         target_pixels = caption_pixels(target, bright)
         assert len(actual_pixels & target_pixels) / len(actual_pixels | target_pixels) > 0.9
+
+
+@pytest.mark.parametrize("timestamp", [0, 1000, 2000])
+def test_boundary_sheets_capture_eight_labeled_frames_at_source_edges(tmp_path, timestamp):
+    from editmaxxing.media import boundary_contact_sheet
+
+    video = tmp_path / "source.mp4"
+    ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=320x240:rate=30:duration=2",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        video,
+    )
+    boundary = {"id": "cut", "timestamp_ms": timestamp, "source_id": "body"}
+    result = boundary_contact_sheet(video, boundary, 2000, tmp_path)
+    assert len(result["frame_timestamps_ms"]) == 8
+    assert all(0 <= t < 2000 for t in result["frame_timestamps_ms"])
+    if timestamp == 1000:
+        assert result["frame_timestamps_ms"] == [867, 900, 933, 967, 1000, 1033, 1067, 1100]
+    with Image.open(result["path"]) as sheet:
+        assert sheet.size == (768, 432)
+        assert sheet.getbbox()
+    assert (tmp_path / "cut.jpg").stat().st_size < 512 * 1024

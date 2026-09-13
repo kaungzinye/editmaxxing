@@ -70,11 +70,12 @@ Private app storage can be lost with device loss or app removal. Explain that li
 
 1. Use Whisper for the timestamped transcript. Apply deterministic timestamp and silence rules for mechanical cleanup, with an ffmpeg silence map and RMS envelope. Astra handles semantic cleanup and editorial choices.
 2. Astra groups intended lines and takes. Repeated opening phrases can indicate retakes during continuous speech.
-3. Select takes from the transcript first. For visually ambiguous candidates, sample a small capped set of frames to assess eye contact and visible delivery. Additional frame analysis returns a reviewable proposal.
+3. Select takes from the transcript and construct candidate clip ranges.
 4. Place boundaries in nearby silence with up to 150 ms padding, clamped to source bounds and neighboring speech.
 5. Split interior silence longer than 700 ms into visible clips, retaining 250 ms total around the split. Keep analysis so the dead-space toggle can reconstruct the plan.
 6. Rank body lines by necessity, preserve coherent order, and drop whole lines automatically to approach the target duration. Return one complete body cut and a restorable list of dropped lines.
-7. Associate four visual title variations with each spoken hook. Build captions from words within the chosen clip ranges.
+7. Review every candidate start and end with four frames before and four at/after the boundary. Astra receives nearby transcript words, timestamps and selection reasons in bounded batches and proposes adjustments within 120 ms. Code validates speech coverage and source bounds.
+8. Associate four visual title variations with each spoken hook. Build captions from words within the visually reviewed clip ranges.
 
 Astra returns editorial choices referencing word and take IDs. Deterministic code turns those choices into validated clip ranges. The first analysis returns one body draft and four spoken hook suggestions together. Changing target duration reuses stored analysis and returns a revision-bound proposal for explicit application.
 
@@ -83,7 +84,7 @@ Astra returns editorial choices referencing word and take IDs. Deterministic cod
 1. Save the recording locally with an immutable source ID and timestamp manifest.
 2. Extract compact audio, preserve its timing map, and prioritize its upload. Prototype extraction in the chosen Expo runtime before committing to the native capture implementation.
 3. Start transcription and initial editing from the audio. Upload full video in parallel as bandwidth allows.
-4. Open the first AI body draft against local phone video. The creator can edit and record hooks while video uploads. Show media-upload and analysis progress separately.
+4. Complete visual boundary review after video normalization, then open the first AI body draft against local phone video. Show media-upload and analysis progress separately.
 5. Analyze additional hook audio independently, then attach available takes to hook candidates. Selecting a hook prepends it to the current body edit.
 6. Enable cloud draft and export once all source video required by the selected combinations is available and verified.
 
@@ -91,7 +92,7 @@ Keep immutable source analysis, revision-bound AI proposals, the user-owned time
 
 Hook matching updates candidate records independently of body edits. A body change can make an existing hook suggestion less relevant, so offer an explicit refresh action while preserving recorded takes and edited suggestions. Capture hook takes, body revision, overlays, captions, and audio settings in each render snapshot.
 
-Transcribe each immutable recording once. Cache analysis using source identity, analysis configuration, and prompt version. Use a separate task for each required analysis stage, and reuse results across all combinations. Target changes rerun line ranking. Trims, reorders, caption chunking, duration calculations, and visual slot assembly run deterministically. Small optional frame checks enrich a reviewable proposal while editing remains available.
+Transcribe each immutable recording once. Cache analysis using source identity, analysis configuration, and prompt version. Use a separate task for each required analysis stage, and reuse results across all combinations. Target changes rerun line ranking. Trims, reorders, caption chunking, duration calculations, and visual slot assembly run deterministically. Every generated body and hook cut receives a bounded visual boundary review. Explicit boundary rechecks return a revision-bound proposal while editing remains available.
 
 ## Audio normalization and delivery feedback
 
