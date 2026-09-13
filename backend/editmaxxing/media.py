@@ -12,7 +12,6 @@ import tempfile
 import wave
 from array import array
 from hashlib import sha256
-from itertools import pairwise
 from pathlib import Path
 
 from PIL import ImageFont
@@ -410,22 +409,16 @@ def _rounded_path(width: int, height: int, radius: int = 22) -> str:
     )
 
 
-def _text_block(
-    words: list[dict], active_word_id: str | None, position: dict, *, title: bool = False
-) -> tuple[str, str, int]:
+def _text_block(words: list[dict], position: dict, *, title: bool = False) -> tuple[str, str, int]:
     size, max_width = (70 if title else 62), 840
-    tokens = [
-        (part, word.get("word_id") is not None and word.get("word_id") == active_word_id)
-        for word in words
-        for part in word["text"].split()
-    ]
+    tokens = [part for word in words for part in word["text"].split()]
     if not tokens:
         return "", "", size
     while True:
         font = ImageFont.truetype(str(FONT_PATH), size)
         lines, line, line_width = [], [], 0.0
         space = font.getlength(" ")
-        for text, focused in tokens:
+        for text in tokens:
             parts, part = [], ""
             for char in text:
                 if part and font.getlength(part + char) > max_width:
@@ -439,7 +432,7 @@ def _text_block(
                     lines.append((line, line_width))
                     line, line_width = [], 0.0
                 line_width += (space if line else 0) + length
-                line.append((part, focused))
+                line.append(part)
         if line:
             lines.append((line, line_width))
         line_height = math.ceil(size * 1.38)
@@ -455,15 +448,9 @@ def _text_block(
         if title
         else ""
     )
-    text = "\\N".join(
-        " ".join(
-            ("{\\1c&H69E8FF&}" if focused else "{\\1c&HFFFFFF&}") + _escape_ass(word)
-            for word, focused in line
-        )
-        for line, _ in lines
-    )
+    text = "\\N".join(" ".join(_escape_ass(word) for word in line) for line, _ in lines)
     border = 0 if title else 4
-    foreground = f"{{\\an5\\pos({cx:.1f},{cy:.1f})\\fs{size}\\bord{border}\\3c&H000000&\\3a&H00&\\shad0\\1a&H00&}}{text}"
+    foreground = f"{{\\an5\\pos({cx:.1f},{cy:.1f})\\fs{size}\\bord{border}\\1c&HFFFFFF&\\3c&H000000&\\3a&H00&\\shad0\\1a&H00&}}{text}"
     return background, foreground, size
 
 
@@ -488,7 +475,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start: int,
         end: int,
         words: list[dict],
-        active_word_id: str | None,
         position: dict,
         title: bool = False,
         fade_ms: int = 0,
@@ -498,7 +484,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             return
         if _ass_time(start) == _ass_time(end):
             return
-        background, foreground, _ = _text_block(words, active_word_id, position, title=title)
+        background, foreground, _ = _text_block(words, position, title=title)
         fade = f"{{\\fad(0,{min(fade_ms, end - start)})}}" if fade_ms else ""
         for layer, text in ((0, background), (1, foreground)):
             if text:
@@ -519,42 +505,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         end = min(caption["end_ms"], window_end, plan["duration_ms"])
         if start >= end:
             continue
-        aligned_words = [
-            word
-            for word in caption["words"]
-            if word.get("word_id") is not None
-            and word.get("start_ms") is not None
-            and word.get("end_ms") is not None
-            and word["start_ms"] < word["end_ms"]
-        ]
-        boundaries = sorted(
-            {start, end}
-            | {
-                max(start, min(end, word[boundary]))
-                for word in aligned_words
-                for boundary in ("start_ms", "end_ms")
-            }
-        )
-        for begin, finish in pairwise(boundaries):
-            active = max(
-                (word for word in aligned_words if word["start_ms"] <= begin < word["end_ms"]),
-                key=lambda word: word["start_ms"],
-                default=None,
-            )
-            add(
-                begin,
-                finish,
-                caption["words"],
-                active["word_id"] if active else None,
-                plan["caption_style"]["position"],
-            )
+        add(start, end, caption["words"], plan["caption_style"]["position"])
     overlay = plan.get("hook_overlay")
     if overlay and overlay.get("text", "").strip():
         add(
             0,
             overlay["hold_ms"],
             [{"text": overlay["text"], "word_id": None}],
-            None,
             overlay["position"],
             True,
             overlay.get("fade_ms", 300),

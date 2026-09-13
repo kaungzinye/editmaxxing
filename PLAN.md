@@ -121,7 +121,7 @@ Verify thumbnail generation and Photos APIs against the installed Expo SDK. Nati
 
 ## Text layout
 
-Use heavy white TikTok Sans captions with a black outline and a transparent background. Highlight the currently spoken word in yellow using its transcript timestamps. Use three or four words per chunk, with shorter chunks at punctuation and pauses. Aim for one to two seconds per chunk. Captions share one lane; creator edits take priority during their anchored intervals, and later stored edits take priority when manual ranges overlap. Creator text with a null transcript word ID stays white.
+Use heavy white TikTok Sans captions with a black outline and a transparent background. Every word uses the same white fill. Balance continuous speech into three- or four-word caption groups. Split at pauses longer than 700 ms and at clip boundaries. Short recordings and unavoidable final remainders use the available spoken words. Captions share one lane; creator edits take priority during their anchored intervals, and later stored edits take priority when manual ranges overlap. Creator text with a null transcript word ID stays white.
 
 Reserve approximately 270 px at the top, 480 px at the bottom, and 140 px on the right of the 1080x1920 canvas. These are layout assumptions to validate against the destination app UI.
 

@@ -289,7 +289,7 @@ def test_subtitle_uses_bundled_tiktok_font_rounded_box_and_clamped_hold(tmp_path
     assert "\\fad(0,300)" in content and "\\p1" in content
 
 
-def test_rendered_captions_have_black_outline_and_follow_spoken_word_intervals(tmp_path):
+def test_rendered_captions_stay_white_with_black_outline_through_word_intervals(tmp_path):
     audio, video, output = (tmp_path / name for name in ("audio.wav", "video.mp4", "captions.mp4"))
     write_wave(audio, 1200)
     create_video(video, audio, 1200, "blue")
@@ -318,13 +318,11 @@ def test_rendered_captions_have_black_outline_and_follow_spoken_word_intervals(t
     )
     frames = {time: frame_at(output, time) for time in (200, 500, 700, 1000, 1150)}
     yellow = lambda r, g, b: r > 190 and g > 140 and b < 170 and r > b + 45 and g > b + 45
-    first = caption_pixels(frames[200], yellow)
-    second = caption_pixels(frames[700], yellow)
-    assert len(first) > 100 and len(second) > 100
-    assert max(x for x, _ in first) < min(x for x, _ in second)
-    assert not caption_pixels(frames[500], yellow)
-    assert not caption_pixels(frames[1000], yellow)
     white = caption_pixels(frames[500], lambda r, g, b: min(r, g, b) > 210)
+    for timestamp in (200, 500, 700, 1000):
+        assert not caption_pixels(frames[timestamp], yellow)
+        frame_white = caption_pixels(frames[timestamp], lambda r, g, b: min(r, g, b) > 210)
+        assert len(frame_white & white) / len(frame_white | white) > 0.97
     black = caption_pixels(frames[500], lambda r, g, b: max(r, g, b) < 45)
     assert len(white) > 500 and len(black) > 100
     min_x, max_x = min(x for x, _ in white), max(x for x, _ in white)

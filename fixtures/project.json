@@ -702,10 +702,10 @@
         "emphasis_word_id": "w_f78af41e70f9be07_3"
       },
       {
-        "id": "caption_552374b5dc9955bfaf95f51e",
+        "id": "caption_e70dea9e38f8f4bd348d07c8",
         "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
         "start_ms": 1825,
-        "end_ms": 3135,
+        "end_ms": 4575,
         "words": [
           {
             "word_id": "w_eaecee90301162c8_0",
@@ -718,16 +718,7 @@
             "text": "audio",
             "start_ms": 2545,
             "end_ms": 3135
-          }
-        ],
-        "emphasis_word_id": "w_eaecee90301162c8_1"
-      },
-      {
-        "id": "caption_27a7ddabdbb62aa3de21914d",
-        "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
-        "start_ms": 3265,
-        "end_ms": 4575,
-        "words": [
+          },
           {
             "word_id": "w_eaecee90301162c8_2",
             "text": "holds",
@@ -741,13 +732,13 @@
             "end_ms": 4575
           }
         ],
-        "emphasis_word_id": "w_eaecee90301162c8_3"
+        "emphasis_word_id": "w_eaecee90301162c8_1"
       },
       {
-        "id": "caption_aaa3b280a1eac255ce882022",
+        "id": "caption_52404fbfbb2cc58b263f945a",
         "clip_id": "clip_f098c6464e24713643f48d1c",
         "start_ms": 4875,
-        "end_ms": 6185,
+        "end_ms": 7625,
         "words": [
           {
             "word_id": "w_eaecee90301162c8_4",
@@ -760,16 +751,7 @@
             "text": "pauses",
             "start_ms": 5595,
             "end_ms": 6185
-          }
-        ],
-        "emphasis_word_id": "w_eaecee90301162c8_5"
-      },
-      {
-        "id": "caption_4003405f6cd8de656bcdc44a",
-        "clip_id": "clip_f098c6464e24713643f48d1c",
-        "start_ms": 6315,
-        "end_ms": 7625,
-        "words": [
+          },
           {
             "word_id": "w_eaecee90301162c8_6",
             "text": "between",
@@ -783,13 +765,13 @@
             "end_ms": 7625
           }
         ],
-        "emphasis_word_id": "w_eaecee90301162c8_6"
+        "emphasis_word_id": "w_eaecee90301162c8_5"
       },
       {
-        "id": "caption_c2e4a75c869e9dfa7a0ea7d4",
+        "id": "caption_4b567c501cfc8f28178c28ac",
         "clip_id": "clip_20fe243794d08ac80d36b86d",
         "start_ms": 7925,
-        "end_ms": 9235,
+        "end_ms": 10675,
         "words": [
           {
             "word_id": "w_eaecee90301162c8_8",
@@ -802,16 +784,7 @@
             "text": "your",
             "start_ms": 8645,
             "end_ms": 9235
-          }
-        ],
-        "emphasis_word_id": "w_eaecee90301162c8_9"
-      },
-      {
-        "id": "caption_6f40cf6d585d60c5b7d8af79",
-        "clip_id": "clip_20fe243794d08ac80d36b86d",
-        "start_ms": 9365,
-        "end_ms": 10675,
-        "words": [
+          },
           {
             "word_id": "w_eaecee90301162c8_10",
             "text": "hook",
@@ -825,7 +798,7 @@
             "end_ms": 10675
           }
         ],
-        "emphasis_word_id": "w_eaecee90301162c8_11"
+        "emphasis_word_id": "w_eaecee90301162c8_9"
       }
     ],
     "caption_edits": []

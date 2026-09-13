@@ -192,7 +192,7 @@ def test_manual_override_addition_and_deletion_survive_reorder_trim_and_removal(
     assert all(c["id"] not in {"manual", "addition"} for c in third["captions"])
 
 
-def test_caption_chunks_follow_punctuation_pauses_and_emphasis():
+def test_caption_chunks_keep_three_or_four_words_across_punctuation_and_preserve_emphasis():
     words = [
         word(i, 1000 + i * 200, 1160 + i * 200, text="end." if i == 2 else f"word{i}") for i in range(1, 8)
     ]
@@ -204,9 +204,61 @@ def test_caption_chunks_follow_punctuation_pauses_and_emphasis():
         {"body": {"duration_ms": 4000}},
         {"take1": selection},
     )
-    assert [len(c["words"]) for c in result["captions"]] == [2, 4, 1]
-    assert result["captions"][1]["emphasis_word_id"] == "w4"
+    assert [len(c["words"]) for c in result["captions"]] == [4, 3]
+    assert result["captions"][0]["emphasis_word_id"] == "w4"
     assert all(c["emphasis_word_id"] in {w["word_id"] for w in c["words"]} for c in result["captions"])
+
+
+@pytest.mark.parametrize(
+    "length,expected_sizes",
+    [
+        (1, [1]),
+        (2, [2]),
+        (3, [3]),
+        (4, [4]),
+        (5, [3, 2]),
+        (6, [3, 3]),
+        (7, [4, 3]),
+        (8, [4, 4]),
+        (9, [3, 3, 3]),
+        (10, [4, 3, 3]),
+        (11, [4, 4, 3]),
+        (12, [4, 4, 4]),
+        (13, [4, 3, 3, 3]),
+        (14, [4, 4, 3, 3]),
+    ],
+)
+def test_continuous_speech_balances_caption_lengths_and_preserves_word_timing(length, expected_sizes):
+    words = [word(i, 1000 + i * 700, 1600 + i * 700, text=f"word{i}.") for i in range(length)]
+    end = words[-1]["end_ms"] + 100
+    result = canonicalize_plan(
+        {**Plan().model_dump(), "clips": [clip(start=900, end=end)]},
+        words,
+        {"body": {"duration_ms": end}},
+    )
+    assert [len(c["words"]) for c in result["captions"]] == expected_sizes
+    assert [w for c in result["captions"] for w in c["words"]] == [
+        {"word_id": w["id"], "text": w["text"], "start_ms": w["start_ms"] - 900, "end_ms": w["end_ms"] - 900}
+        for w in words
+    ]
+    assert_caption_lane(result["captions"])
+
+
+@pytest.mark.parametrize("gap,expected_sizes", [(0, [3, 3]), (350, [3, 3]), (700, [3, 3]), (701, [2, 4])])
+def test_caption_runs_split_at_source_pauses_over_700ms(gap, expected_sizes):
+    words = [word(0, 0, 200), word(1, 200, 400)] + [
+        word(i + 2, 400 + gap + i * 200, 600 + gap + i * 200) for i in range(4)
+    ]
+    end = words[-1]["end_ms"]
+    result = canonicalize_plan(
+        {**Plan().model_dump(), "clips": [clip(start=0, end=end)]}, words, {"body": {"duration_ms": end}}
+    )
+    assert [len(c["words"]) for c in result["captions"]] == expected_sizes
+    if gap > 700:
+        assert result["captions"][0]["end_ms"] == 400
+        assert result["captions"][1]["start_ms"] == 400 + gap
+    assert [w["word_id"] for c in result["captions"] for w in c["words"]] == [w["id"] for w in words]
+    assert_caption_lane(result["captions"])
 
 
 def test_hook_prepend_preserves_saved_body_and_recalculates_caption_offsets():
@@ -283,11 +335,12 @@ def test_manual_caption_owns_its_range_and_preserves_spoken_tail_after_hook():
     assert body["caption_style"]["preset"] == "spoken_outline"
     assert [(c["start_ms"], c["end_ms"], [w["text"] for w in c["words"]]) for c in body["captions"]] == [
         (0, 1000, ["Synthetic", "review"]),
-        (1000, 1090, ["between"]),
-        (1090, 1770, ["your", "ideas"]),
+        (1000, 1770, ["between", "your", "ideas"]),
     ]
     assert body["captions"][1]["words"] == [
-        {"word_id": "w4", "text": "between", "start_ms": 1000, "end_ms": 1090}
+        {"word_id": "w4", "text": "between", "start_ms": 1000, "end_ms": 1090},
+        {"word_id": "w5", "text": "your", "start_ms": 1090, "end_ms": 1350},
+        {"word_id": "w6", "text": "ideas", "start_ms": 1350, "end_ms": 1770},
     ]
     hook = {
         "id": "hook1",
@@ -298,9 +351,11 @@ def test_manual_caption_owns_its_range_and_preserves_spoken_tail_after_hook():
         body, hook, None, {"id": "combo1", "hook_id": "hook1", "use_title": False}, words, sources
     )
     body_captions = [c for c in assembled["captions"] if c["clip_id"] == "body_clip"]
-    assert [(c["start_ms"], c["end_ms"]) for c in body_captions] == [(2610, 3610), (3610, 3700), (3700, 4380)]
+    assert [(c["start_ms"], c["end_ms"]) for c in body_captions] == [(2610, 3610), (3610, 4380)]
     assert body_captions[1]["words"] == [
-        {"word_id": "w4", "text": "between", "start_ms": 3610, "end_ms": 3700}
+        {"word_id": "w4", "text": "between", "start_ms": 3610, "end_ms": 3700},
+        {"word_id": "w5", "text": "your", "start_ms": 3700, "end_ms": 3960},
+        {"word_id": "w6", "text": "ideas", "start_ms": 3960, "end_ms": 4380},
     ]
     assert all(w["start_ms"] is None and w["end_ms"] is None for w in body_captions[0]["words"])
     assert_caption_lane(assembled["captions"])
@@ -494,13 +549,14 @@ def test_overlapping_asr_chunks_have_disjoint_cues_and_contained_word_timings():
         word(2, 400, 600, text="Second."),
         word(3, 700, 1200, text="Third."),
         word(4, 1000, 1500, text="Fourth."),
+        word(5, 1500, 1600, text="Fifth."),
+        word(6, 1600, 1700, text="Sixth."),
     ]
     result = canonicalize_plan(
-        {**Plan().model_dump(), "clips": [clip(start=0, end=1600)]}, words, {"body": {"duration_ms": 2000}}
+        {**Plan().model_dump(), "clips": [clip(start=0, end=1800)]}, words, {"body": {"duration_ms": 2000}}
     )
-    assert result["captions"]
-    assert result["captions"][0]["start_ms"] == 0
-    assert result["captions"][-1]["end_ms"] == 1500
+    assert [(c["start_ms"], c["end_ms"]) for c in result["captions"]] == [(0, 1000), (1000, 1700)]
+    assert [len(c["words"]) for c in result["captions"]] == [3, 3]
     assert_caption_lane(result["captions"])
 
 

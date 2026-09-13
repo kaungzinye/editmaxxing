@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from copy import deepcopy
 from hashlib import sha256
 from heapq import heappop, heappush
@@ -127,23 +126,24 @@ def clips_for_take(
 
 
 def _caption_chunks(words: list[dict]) -> list[list[dict]]:
-    chunks, current = [], []
+    runs, current, covered_until = [], [], 0
     for word in words:
-        if current and (
-            len(current) == 4
-            or word["start_ms"] - current[-1]["end_ms"] > 350
-            or word["end_ms"] - current[0]["start_ms"] > 1800
-        ):
-            chunks.append(current)
+        if current and word["start_ms"] - covered_until > 700:
+            runs.append(current)
             current = []
         current.append(word)
-        if re.search(r"[.!?;:]$", word["text"].strip()) or (
-            len(current) >= 2 and word["text"].rstrip().endswith(",")
-        ):
-            chunks.append(current)
-            current = []
+        covered_until = max(covered_until, word["end_ms"])
     if current:
-        chunks.append(current)
+        runs.append(current)
+    chunks = []
+    for run in runs:
+        count = (len(run) + 3) // 4
+        size, extra = divmod(len(run), count)
+        cursor = 0
+        for number in range(count):
+            end = cursor + size + (number < extra)
+            chunks.append(run[cursor:end])
+            cursor = end
     return chunks
 
 
