@@ -1,5 +1,15 @@
 /** Source ranges are half-open. Time values are integer milliseconds. */
-export type TargetDuration = 15000 | 30000 | 45000 | 60000 | 90000;
+/** Validate integer range 90000..160000 at the API boundary. */
+export type TargetDuration = number;
+export interface VisualHookTitle {
+  id: string;
+  text: string;
+}
+export interface SpokenHook {
+  id: string;
+  take_id: string;
+  visual_titles: [VisualHookTitle, VisualHookTitle, VisualHookTitle, VisualHookTitle];
+}
 export type Position = { x: number; y: number };
 export interface Clip {
   id: string;
@@ -26,11 +36,11 @@ export interface Plan {
   duration_ms: number;
   target_met: boolean;
   selected_hook_id: string;
+  selected_visual_title_id: string;
   clips: Clip[];
   dropped_lines: { line_id: string; text: string; reason: string }[];
   dead_space: { enabled: boolean; threshold_ms: 700; retain_ms: 250 };
   hook_overlay: {
-    locked: boolean;
     text: string;
     position: Position;
     hold_ms: 12000;

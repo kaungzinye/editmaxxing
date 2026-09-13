@@ -1,12 +1,12 @@
 # API contract
 
-Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Each project has one normalized editing source.
+Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Confirm single-file or multi-file uploads before implementing project creation. Each uploaded file gets a normalized editing source.
 
 ## Routes
 
 | Method and route | Request | Response |
 | --- | --- | --- |
-| `POST /projects` | Multipart `file`, `target_duration_ms`, default 45000 | 202 with `project_id`, `project_token`, `job_id` |
+| `POST /projects` | Multipart `file`, `target_duration_ms` | 202 with `project_id`, `project_token`, `job_id` |
 | `GET /jobs/{id}` | Project bearer token | Job state, stage, progress, result or error |
 | `GET /projects/{id}` | Project bearer token | Sources, words, analysis, hook candidates, current plan |
 | `POST /projects/{id}/analysis` | Project bearer token | 202 with job ID, supports analysis retry |
@@ -26,10 +26,10 @@ Analysis returns a project ID and saved plan revision. Ranking returns a propose
 
 ## Plan rules
 
-- Targets are 15000, 30000, 45000, 60000, or 90000 ms.
+- Target finished duration is an integer from 90000 to 160000 ms. Confirm whether the upper bound includes 180000 ms before implementation.
 - Source ranges are half-open and satisfy `0 <= start < end <= source duration`.
 - Every source, line, take, and word reference belongs to the project. Clip IDs are unique.
-- A selected hook and its text move together while locked. Leading hook clips reference the selected hook take.
+- Each of four spoken hooks owns four visual title variations. `selected_visual_title_id` must belong to `selected_hook_id`. Leading hook clips reference the selected spoken take. Title authorship and batch-export behavior are product decisions to confirm.
 - The ordered clip list controls rendering. Repeated ranges represent distinct clip occurrences.
 - On save, the server derives duration, target status, and captions from clip ranges. Caption words overlap the source range and their timing is clamped to its bounds, then offset into the assembled timeline.
 - Each caption has one to four words and one emphasis word from that chunk. Prefer three or four words, splitting at punctuation or pauses.
@@ -45,6 +45,6 @@ Draft: 540x960. Export: 1080x1920. Both use 30 fps, H.264, AAC, and MP4 fast-sta
 
 Errors use `{ "error": { "code": "invalid_plan", "message": "Clip c_1 ends beyond the source.", "retryable": false } }` with an optional request ID. Keep provider errors and secrets in server logs.
 
-Stream uploads to disk with a 500,000,000-byte cap. Return 413 for byte limits and 422 for invalid or over-180-second media. Clean up partial uploads. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. Start with 24 hours for the demo.
+Stream multi-minute raw uploads to disk. Set configurable byte and source-duration limits after confirming expected footage size. Return 413 for byte limits and 422 for invalid media or footage exceeding the configured source-duration limit. Clean up partial uploads. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. Start with 24 hours for the demo.
 
 The synthetic fixture contains clip and caption data. Integration supplies the corresponding source media, full transcript, and hook analysis.

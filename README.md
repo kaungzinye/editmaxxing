@@ -1,6 +1,6 @@
 # editmaxxing
 
-A mobile video editor for tech creators. Upload phone footage, let Astra select takes and pair hooks, edit the timeline, and export a captioned vertical MP4.
+A mobile video editor for tech creators. Upload multi-minute talking-head footage, select from four spoken hooks with four visual title variations each, edit the timeline, and export a captioned vertical MP4 targeting 90 to 160 seconds.
 
 This repository contains the product plan, API contract, shared TypeScript types, and synthetic sample data. The app implementation is the next build step.
 

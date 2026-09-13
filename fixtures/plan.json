@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "revision": 1,
-  "target_duration_ms": 45000,
+  "target_duration_ms": 120000,
   "duration_ms": 6000,
   "target_met": true,
   "selected_hook_id": "hook_1",
@@ -34,7 +34,6 @@
     "retain_ms": 250
   },
   "hook_overlay": {
-    "locked": true,
     "text": "I tried a phone editor for 7 days",
     "position": {
       "x": 0.44,
@@ -97,5 +96,6 @@
       ],
       "emphasis_word_id": "w7"
     }
-  ]
+  ],
+  "selected_visual_title_id": "hook_1_title_1"
 }

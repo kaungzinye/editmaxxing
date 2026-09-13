@@ -4,29 +4,29 @@
 
 ## Product
 
-Tech creators film on a phone, upload, and receive an editable vertical cut. Astra selects takes, pairs spoken hooks with template text, ranks body lines, and selects caption emphasis. The creator trims and reorders clips in a CapCut-style timeline and exports one 1080x1920 MP4 to Photos.
+Tech creators record talking-head footage on a phone, upload, and receive an editable vertical cut. Astra selects takes, organizes spoken hooks and visual hook titles, ranks body lines, and selects caption emphasis. The creator trims and reorders clips in a CapCut-style timeline and exports one 1080x1920 MP4 to Photos.
 
-Target length: 15, 30, 45, 60, or 90 seconds, default 45. Display actual duration and dropped lines. Treat the target as a whole-line editing goal. Report when essential content exceeds it.
+Target finished length: 90 to 160 seconds. The target applies to the assembled talking-head video. Display actual duration and dropped lines. Treat the target as a whole-line editing goal. Report when essential content exceeds it. Confirm whether 180 seconds should also be available, as the recording discussion includes that output length.
 
 ## Recording and hooks
 
 Film four distinct spoken hooks first, then the body with retakes. Astra identifies hook candidates before the first body line and groups takes of each intended line.
 
-Vanessa provides 15 to 20 handwritten templates with brace slots, such as `I tried {tool} for {n} days and {result}`. Astra fills slots from transcript evidence. The backend validates slot names and assembles text. Spoken content comes from the recording. Take-selection reasons appear in the editor.
+Each of the four spoken hooks has four visual hook title variations, giving 16 spoken-hook/title combinations. A visual hook is the on-screen opening title. Spoken content comes from the recording. Confirm whether Astra writes the title variations, the creator supplies them, or both. Take-selection reasons appear in the editor.
 
-Pair each spoken hook with its template text. Pairs are locked by default and switch together. An explicit unlock permits a text override.
+Select a spoken hook, then one of its four visual title variations. Keep each title attached to its parent spoken hook. Confirm whether export produces one selected combination or a batch of variations.
 
 ## Architecture
 
 - Expo Router app with upload, progress, projects, timeline, playback, and export screens.
-- FastAPI and ffmpeg in one Railway container, with a persistent volume for project files and job state.
+- Proposed deployment: FastAPI and ffmpeg in one Railway container, with a persistent volume for project files and job state. Railway hosts the API, processing worker, storage, and renders. Local development runs on the laptop. Confirm hosting after checking account eligibility and resource needs.
 - Hosted `whisper-1` transcription with word timestamps. `gpt-6-astra` handles semantic analysis with transcript text and timestamped sampled frames.
 - Expo web export provides the judge's deployed app link. Validate native dependencies in Expo Go and verify the EAS Update distribution route on the demo phones.
 - The app stores a local project list. The server stores each project's upload, normalized source, words, silence map, analysis, and saved plan.
 
 ## Upload and normalization
 
-Accept one recording per project, capped at 180 seconds and 500,000,000 bytes. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
+Raw footage spans multiple minutes and includes all hooks, retakes, pauses, and flubs needed for the finished edit. Set upload duration and byte limits independently from finished-video duration. Confirm the expected longest recording, file size, and whether a project accepts one recording or several files. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
 
 Use a 1080x1920 output canvas at 30 fps, center-cropping to fill. Show the same crop in preview. Provider keys live in backend environment variables. Use opaque project access tokens and signed media URLs for the public demo. Set a storage quota and configurable project retention.
 
@@ -38,9 +38,9 @@ Use a 1080x1920 output canvas at 30 fps, center-cropping to fill. Show the same 
 4. Place boundaries in nearby silence with up to 150 ms padding, clamped to source bounds and neighboring speech.
 5. Split interior silence longer than 700 ms into visible clips, retaining 250 ms total around the split. Keep analysis so the dead-space toggle can reconstruct the plan.
 6. Rank body lines by necessity, preserve coherent order, and drop whole lines to approach the target duration.
-7. Pair hook takes and filled templates. Build captions from words within the chosen clip ranges.
+7. Associate four visual title variations with each spoken hook. Build captions from words within the chosen clip ranges.
 
-Changing target duration reuses transcription, take scores, silence data, and hook fills. Rerun line ranking and return a proposed plan. Applying a proposal is an explicit action when the timeline contains manual edits.
+Changing target duration reuses transcription, take scores, silence data, and visual hook titles. Rerun line ranking and return a proposed plan. Applying a proposal is an explicit action when the timeline contains manual edits.
 
 ## Timeline contract
 
@@ -67,9 +67,9 @@ Place the hook in the upper middle. Hold for 12 seconds and fade over 300 ms, cl
 ## Ownership and checkpoints
 
 - Kaung: upload, storage, transcription, Astra analysis, cut construction, captions, render, then timeline integration.
-- Vanessa: Expo screens, gestures, playback, projects, hook templates, web deployment.
+- Vanessa: Expo screens, gestures, playback, projects, visual hook title UI, web deployment.
 - By 11:00: agree on the contract, verify model access, select the Expo SDK, and confirm Railway storage.
-- By 12:30: backend processes short footage, app edits fixture data, templates are ready.
+- By 12:30: backend processes short footage, app edits fixture data, visual hook title selection is ready.
 - By 13:30: connect upload, job polling, plan save, and render. Deploy.
 - By 14:30: test phone and web export, caption alignment, project reload, and errors.
 - By 15:20: record the demo and verify public links in a signed-out browser.
@@ -77,7 +77,7 @@ Place the hook in the upper middle. Hold for 12 seconds and fade over 300 ms, cl
 
 ## Acceptance checks
 
-- Footage with four hooks and body retakes produces paired hooks and selected-take reasons.
+- Footage with four spoken hooks and body retakes produces four visual title options per hook and selected-take reasons.
 - Trim and reorder survive reload and appear in the export.
 - Captions align after clips move, shrink, or repeat. Hook text begins at timeline zero.
 - Target changes expose dropped lines and actual duration.
@@ -89,16 +89,17 @@ Place the hook in the upper middle. Hold for 12 seconds and fade over 300 ms, cl
 
 1. 0:00 to 0:10: phone footage with hooks, retakes, and pauses. State the editing problem.
 2. 0:10 to 0:25: upload, analysis result, and selected-take reasons.
-3. 0:25 to 0:40: switch a hook pair and choose a target duration. Show dropped lines.
+3. 0:25 to 0:40: select a spoken hook and one of its four visual titles and choose a target duration. Show dropped lines.
 4. 0:40 to 1:00: trim, reorder, and play the captioned edit on the phone.
 5. 1:00 to 1:15: export and play the MP4 from Photos.
-6. 1:15 to 1:30: explain Astra's take grouping, frame scores, ranking, slot fills, and emphasis selections.
+6. 1:15 to 1:30: explain Astra's take grouping, frame scores, ranking, visual hook titles, and emphasis selections.
 
 ## Remaining inputs
 
 - A project API key with verified `gpt-6-astra` access. The task environment has no `OPENAI_API_KEY` configured.
-- Vanessa's templates and permitted footage. Kaung settles the filming schedule.
+- Visual title authorship and permitted talking-head footage. Kaung settles the filming schedule.
+- Output upper bound of 160 or 180 seconds, longest raw upload, single or multiple source files, and single or batch export.
 - Exact caption reference. The default above supports initial layout work.
 - Railway and Expo deployment access.
 
-Stretch work after the core flow passes: multiple hook exports, color controls, and sounds.
+Stretch work after the core flow passes: color controls and sounds. Confirm batch hook export scope during the product interview.
