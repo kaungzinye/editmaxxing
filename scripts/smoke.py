@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 
 import httpx
+from editmaxxing.editing import canonicalize_plan
 from editmaxxing.media import probe
 from prepare_media import prepare
 
@@ -243,16 +244,29 @@ class Smoke:
             plan["clips"][0], plan["clips"][1] = plan["clips"][1], plan["clips"][0]
         first = plan["clips"][0]
         first["source_start_ms"] += min(50, (first["source_end_ms"] - first["source_start_ms"]) // 4)
+        plan = canonicalize_plan(plan, state["words"], state["sources"], state["takes"])
+        spoken_caption = plan["captions"][0]
+        clip_index = next(
+            index for index, clip in enumerate(plan["clips"]) if clip["id"] == spoken_caption["clip_id"]
+        )
+        caption_clip = plan["clips"][clip_index]
+        caption_offset = sum(
+            clip["source_end_ms"] - clip["source_start_ms"] for clip in plan["clips"][:clip_index]
+        )
         plan["caption_edits"].append(
             {
                 "id": "manual_smoke",
-                "clip_id": first["id"],
-                "source_start_ms": first["source_start_ms"],
-                "source_end_ms": min(first["source_end_ms"], first["source_start_ms"] + 1000),
+                "clip_id": caption_clip["id"],
+                "source_start_ms": caption_clip["source_start_ms"]
+                + spoken_caption["start_ms"]
+                - caption_offset,
+                "source_end_ms": caption_clip["source_start_ms"] + spoken_caption["end_ms"] - caption_offset,
                 "deleted": False,
-                "replaces_word_ids": [],
-                "words": [{"word_id": None, "text": "Synthetic"}, {"word_id": None, "text": "review"}],
-                "emphasis_word_id": None,
+                "replaces_word_ids": [word["word_id"] for word in spoken_caption["words"]],
+                "words": [
+                    {"word_id": word["word_id"], "text": word["text"]} for word in spoken_caption["words"]
+                ],
+                "emphasis_word_id": spoken_caption["emphasis_word_id"],
             }
         )
         saved = self.request(
@@ -266,7 +280,14 @@ class Smoke:
             expected=409,
             json={"base_revision": state["plan"]["revision"], "plan": plan},
         )
-        self.check("Trim, reorder, manual captions, and stale revision rejection pass")
+        saved_caption = next(caption for caption in saved["captions"] if caption["id"] == "manual_smoke")
+        self.check(
+            "Trim, reorder, spoken manual-caption timing, and stale revision rejection pass",
+            saved_caption["words"] == spoken_caption["words"]
+            and all(
+                word["start_ms"] is not None and word["end_ms"] is not None for word in saved_caption["words"]
+            ),
+        )
         self.wait(self.video(body_manifest))
         scripts = [{"hook_id": hook["id"], "text": hook["proposed_text"]} for hook in state["hooks"]]
         hooks = synthetic_video(

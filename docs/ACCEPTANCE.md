@@ -11,7 +11,7 @@
 | Live provider | 32 body words, four body takes, four spoken hooks, 16 evidence-valid titles, four recorded hook matches; 52.0 seconds | Local `artifacts/provider-live/report.json` |
 | Live HTTP pipeline | 17 checks pass in 100.1 seconds; two drafts and one export downloaded | Local `artifacts/api-smoke-live/report.json` |
 | Railway live HTTP pipeline | 17 checks pass in 103.7 seconds; real Whisper/Astra, two drafts, and one 1080p export | Local `artifacts/railway-smoke/report.json` |
-| Caption export | 1080x1920 export with outlined text, timed yellow words, and one caption lane at 2.61 seconds | Local `artifacts/railway-smoke/captions-fixed-local/report.json` |
+| Caption export | Railway revision 3 renders a 1080x1920 export with outlined text, timed yellow words, and spoken captions throughout | Local `artifacts/railway-smoke/captions-spoken-hosted-report.json`; frame checks in `captions-spoken-hosted/` |
 | Railway restart recovery | Saved revision 2, both original checksums, and all three render checksums persist through a dashboard restart | Local `artifacts/railway-smoke/persistence-report.json` |
 | Fixture HTTP pipeline | 17 checks pass in 27.6 seconds | Local `artifacts/api-smoke-fixture-v2/report.json` |
 | Container | Health, mounted-storage recovery after restart, one worker, and TikTok Sans pass | Local `artifacts/provider-live/container-report.json` |
@@ -46,4 +46,4 @@ The artifact directories are local and ignored by Git. The checked-in [smoke com
 
 Xcode 26.6, build 17F112, is installed from Apple's App Store. The displayed Xcode and Apple SDKs Agreement awaits user approval. Full Expo 57 compilation follows that approval. The native core proof covers AVFoundation extraction on macOS and compilation for `arm64-apple-ios16.4`; phone execution and interruption recovery require device evidence.
 
-The hosted rendered export is downloaded to `artifacts/railway-smoke/export-combo_1.mp4`. Its hook and body frame inspections are `export-frame.png` and `export-body-frame.png` in the same directory. [CLIENT.md](CLIENT.md), [PROVIDERS.md](PROVIDERS.md), and [DEPLOYMENT.md](DEPLOYMENT.md) contain the commands and operating contract.
+The caption sample is `artifacts/railway-smoke/captions-spoken-hosted.mp4`. Its saved revision 3 uses spoken captions throughout. The smoke script checks manual-edit persistence using transcript words and their timestamps. Caption frames are in `artifacts/railway-smoke/captions-spoken-hosted/`. [CLIENT.md](CLIENT.md), [PROVIDERS.md](PROVIDERS.md), and [DEPLOYMENT.md](DEPLOYMENT.md) contain the commands and operating contract.
