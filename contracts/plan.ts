@@ -3,6 +3,7 @@
 export type TargetDuration = number;
 export interface VisualHookTitle {
   id: string;
+  template_id: string;
   text: string;
 }
 export interface SpokenHook {

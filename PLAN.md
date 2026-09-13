@@ -12,7 +12,7 @@ Target finished length: 90 to 160 seconds. The target applies to the assembled t
 
 Film four distinct spoken hooks first, then the body with retakes. Astra identifies hook candidates before the first body line and groups takes of each intended line.
 
-Each of the four spoken hooks has four visual hook title variations, giving 16 spoken-hook/title combinations. A visual hook is the on-screen opening title. Spoken content comes from the recording. Confirm whether Astra writes the title variations, the creator supplies them, or both. Take-selection reasons appear in the editor.
+Each of the four spoken hooks has four visual hook title variations, giving 16 spoken-hook/title combinations. A visual hook is the on-screen opening title. Spoken content comes from the recording. Vanessa supplies the visual hook title templates. Astra uses those templates to produce four title variations for each spoken hook, grounded in the recording. Confirm how much of each template Astra may change. Take-selection reasons appear in the editor.
 
 Select a spoken hook, then one of its four visual title variations. Keep each title attached to its parent spoken hook. Confirm whether export produces one selected combination or a batch of variations.
 
@@ -97,7 +97,7 @@ Place the hook in the upper middle. Hold for 12 seconds and fade over 300 ms, cl
 ## Remaining inputs
 
 - A project API key with verified `gpt-6-astra` access. The task environment has no `OPENAI_API_KEY` configured.
-- Visual title authorship and permitted talking-head footage. Kaung settles the filming schedule.
+- Vanessa's visual hook title templates and permitted talking-head footage. Kaung settles the filming schedule.
 - Output upper bound of 160 or 180 seconds, longest raw upload, single or multiple source files, and single or batch export.
 - Exact caption reference. The default above supports initial layout work.
 - Railway and Expo deployment access.

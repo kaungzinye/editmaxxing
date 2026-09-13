@@ -29,7 +29,7 @@ Analysis returns a project ID and saved plan revision. Ranking returns a propose
 - Target finished duration is an integer from 90000 to 160000 ms. Confirm whether the upper bound includes 180000 ms before implementation.
 - Source ranges are half-open and satisfy `0 <= start < end <= source duration`.
 - Every source, line, take, and word reference belongs to the project. Clip IDs are unique.
-- Each of four spoken hooks owns four visual title variations. `selected_visual_title_id` must belong to `selected_hook_id`. Leading hook clips reference the selected spoken take. Title authorship and batch-export behavior are product decisions to confirm.
+- Each of four spoken hooks owns four visual title variations. `selected_visual_title_id` must belong to `selected_hook_id`. Leading hook clips reference the selected spoken take. Each title references a Vanessa-supplied template through `template_id`. Astra bases the title on that template and the recording. Confirm permitted template edits and batch-export behavior.
 - The ordered clip list controls rendering. Repeated ranges represent distinct clip occurrences.
 - On save, the server derives duration, target status, and captions from clip ranges. Caption words overlap the source range and their timing is clamped to its bounds, then offset into the assembled timeline.
 - Each caption has one to four words and one emphasis word from that chunk. Prefer three or four words, splitting at punctuation or pauses.
