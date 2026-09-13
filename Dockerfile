@@ -21,7 +21,6 @@ COPY backend ./backend
 RUN uv sync --locked --no-dev --no-editable \
     && mkdir -p /data
 
-VOLUME ["/data"]
 EXPOSE 8000
 
 CMD ["sh", "-c", "exec uvicorn editmaxxing.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
