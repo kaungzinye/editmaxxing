@@ -1,0 +1,801 @@
+{
+  "fixture": true,
+  "media": "Generated test patterns and tones",
+  "sources": {
+    "source_body": {
+      "source_id": "source_body",
+      "role": "body",
+      "duration_ms": 12000,
+      "fingerprint": "445de04e0bd9617809ac556c26252076d591cc1667c0875df8cc467cc216ac2e",
+      "timing": {
+        "media_origin_ms": 0,
+        "encoder_delay_ms": 0,
+        "duration_ms": 12000,
+        "sample_rate": 48000,
+        "extractor": "captured_original"
+      },
+      "hook_scripts": []
+    },
+    "source_hooks": {
+      "source_id": "source_hooks",
+      "role": "hooks",
+      "duration_ms": 8000,
+      "fingerprint": "c68140541d3758aab435b95445967b123c3c4b1a83dcedf30dcaaa4a713c71e8",
+      "timing": {
+        "media_origin_ms": 0,
+        "encoder_delay_ms": 0,
+        "duration_ms": 8000,
+        "sample_rate": 48000,
+        "extractor": "captured_original"
+      },
+      "hook_scripts": [
+        {
+          "hook_id": "hook_fixture_1",
+          "text": "Clear audio holds attention."
+        },
+        {
+          "hook_id": "hook_fixture_2",
+          "text": "Trim pauses between ideas."
+        },
+        {
+          "hook_id": "hook_fixture_3",
+          "text": "Put your hook first."
+        },
+        {
+          "hook_id": "hook_fixture_4",
+          "text": "Clear audio, sharper ideas."
+        }
+      ]
+    }
+  },
+  "words": [
+    {
+      "id": "w_eaecee90301162c8_0",
+      "source_id": "source_body",
+      "text": "Clear",
+      "start_ms": 480,
+      "end_ms": 1070
+    },
+    {
+      "id": "w_eaecee90301162c8_1",
+      "source_id": "source_body",
+      "text": "audio",
+      "start_ms": 1200,
+      "end_ms": 1790
+    },
+    {
+      "id": "w_eaecee90301162c8_2",
+      "source_id": "source_body",
+      "text": "holds",
+      "start_ms": 1920,
+      "end_ms": 2510
+    },
+    {
+      "id": "w_eaecee90301162c8_3",
+      "source_id": "source_body",
+      "text": "attention.",
+      "start_ms": 2640,
+      "end_ms": 3230
+    },
+    {
+      "id": "w_eaecee90301162c8_4",
+      "source_id": "source_body",
+      "text": "Trim",
+      "start_ms": 4480,
+      "end_ms": 5070
+    },
+    {
+      "id": "w_eaecee90301162c8_5",
+      "source_id": "source_body",
+      "text": "pauses",
+      "start_ms": 5200,
+      "end_ms": 5790
+    },
+    {
+      "id": "w_eaecee90301162c8_6",
+      "source_id": "source_body",
+      "text": "between",
+      "start_ms": 5920,
+      "end_ms": 6510
+    },
+    {
+      "id": "w_eaecee90301162c8_7",
+      "source_id": "source_body",
+      "text": "ideas.",
+      "start_ms": 6640,
+      "end_ms": 7230
+    },
+    {
+      "id": "w_eaecee90301162c8_8",
+      "source_id": "source_body",
+      "text": "Put",
+      "start_ms": 8480,
+      "end_ms": 9070
+    },
+    {
+      "id": "w_eaecee90301162c8_9",
+      "source_id": "source_body",
+      "text": "your",
+      "start_ms": 9200,
+      "end_ms": 9790
+    },
+    {
+      "id": "w_eaecee90301162c8_10",
+      "source_id": "source_body",
+      "text": "hook",
+      "start_ms": 9920,
+      "end_ms": 10510
+    },
+    {
+      "id": "w_eaecee90301162c8_11",
+      "source_id": "source_body",
+      "text": "first.",
+      "start_ms": 10640,
+      "end_ms": 11230
+    },
+    {
+      "id": "w_f78af41e70f9be07_0",
+      "source_id": "source_hooks",
+      "text": "Clear",
+      "start_ms": 240,
+      "end_ms": 535
+    },
+    {
+      "id": "w_f78af41e70f9be07_1",
+      "source_id": "source_hooks",
+      "text": "audio",
+      "start_ms": 600,
+      "end_ms": 895
+    },
+    {
+      "id": "w_f78af41e70f9be07_2",
+      "source_id": "source_hooks",
+      "text": "holds",
+      "start_ms": 960,
+      "end_ms": 1255
+    },
+    {
+      "id": "w_f78af41e70f9be07_3",
+      "source_id": "source_hooks",
+      "text": "attention.",
+      "start_ms": 1320,
+      "end_ms": 1615
+    },
+    {
+      "id": "w_f78af41e70f9be07_4",
+      "source_id": "source_hooks",
+      "text": "Trim",
+      "start_ms": 2240,
+      "end_ms": 2535
+    },
+    {
+      "id": "w_f78af41e70f9be07_5",
+      "source_id": "source_hooks",
+      "text": "pauses",
+      "start_ms": 2600,
+      "end_ms": 2895
+    },
+    {
+      "id": "w_f78af41e70f9be07_6",
+      "source_id": "source_hooks",
+      "text": "between",
+      "start_ms": 2960,
+      "end_ms": 3255
+    },
+    {
+      "id": "w_f78af41e70f9be07_7",
+      "source_id": "source_hooks",
+      "text": "ideas.",
+      "start_ms": 3320,
+      "end_ms": 3615
+    },
+    {
+      "id": "w_f78af41e70f9be07_8",
+      "source_id": "source_hooks",
+      "text": "Put",
+      "start_ms": 4240,
+      "end_ms": 4535
+    },
+    {
+      "id": "w_f78af41e70f9be07_9",
+      "source_id": "source_hooks",
+      "text": "your",
+      "start_ms": 4600,
+      "end_ms": 4895
+    },
+    {
+      "id": "w_f78af41e70f9be07_10",
+      "source_id": "source_hooks",
+      "text": "hook",
+      "start_ms": 4960,
+      "end_ms": 5255
+    },
+    {
+      "id": "w_f78af41e70f9be07_11",
+      "source_id": "source_hooks",
+      "text": "first.",
+      "start_ms": 5320,
+      "end_ms": 5615
+    },
+    {
+      "id": "w_f78af41e70f9be07_12",
+      "source_id": "source_hooks",
+      "text": "Clear",
+      "start_ms": 6240,
+      "end_ms": 6535
+    },
+    {
+      "id": "w_f78af41e70f9be07_13",
+      "source_id": "source_hooks",
+      "text": "audio,",
+      "start_ms": 6600,
+      "end_ms": 6895
+    },
+    {
+      "id": "w_f78af41e70f9be07_14",
+      "source_id": "source_hooks",
+      "text": "sharper",
+      "start_ms": 6960,
+      "end_ms": 7255
+    },
+    {
+      "id": "w_f78af41e70f9be07_15",
+      "source_id": "source_hooks",
+      "text": "ideas.",
+      "start_ms": 7320,
+      "end_ms": 7615
+    }
+  ],
+  "takes": {
+    "take_fixture_1": {
+      "id": "take_fixture_1",
+      "line_id": "line_fixture_1",
+      "word_ids": [
+        "w_eaecee90301162c8_0",
+        "w_eaecee90301162c8_1",
+        "w_eaecee90301162c8_2",
+        "w_eaecee90301162c8_3"
+      ],
+      "role": "body",
+      "score": 100,
+      "selected": true,
+      "reason": "Synthetic fixture line for pipeline verification.",
+      "emphasis_word_ids": [
+        "w_eaecee90301162c8_1"
+      ]
+    },
+    "take_fixture_2": {
+      "id": "take_fixture_2",
+      "line_id": "line_fixture_2",
+      "word_ids": [
+        "w_eaecee90301162c8_4",
+        "w_eaecee90301162c8_5",
+        "w_eaecee90301162c8_6",
+        "w_eaecee90301162c8_7"
+      ],
+      "role": "body",
+      "score": 99,
+      "selected": true,
+      "reason": "Synthetic fixture line for pipeline verification.",
+      "emphasis_word_ids": [
+        "w_eaecee90301162c8_5"
+      ]
+    },
+    "take_fixture_3": {
+      "id": "take_fixture_3",
+      "line_id": "line_fixture_3",
+      "word_ids": [
+        "w_eaecee90301162c8_8",
+        "w_eaecee90301162c8_9",
+        "w_eaecee90301162c8_10",
+        "w_eaecee90301162c8_11"
+      ],
+      "role": "body",
+      "score": 98,
+      "selected": true,
+      "reason": "Synthetic fixture line for pipeline verification.",
+      "emphasis_word_ids": [
+        "w_eaecee90301162c8_9"
+      ]
+    },
+    "hook_take_fixture_1": {
+      "id": "hook_take_fixture_1",
+      "line_id": "hook_line_fixture_1",
+      "word_ids": [
+        "w_f78af41e70f9be07_0",
+        "w_f78af41e70f9be07_1",
+        "w_f78af41e70f9be07_2",
+        "w_f78af41e70f9be07_3"
+      ],
+      "role": "hook",
+      "source_id": "source_hooks",
+      "selected": true,
+      "score": 100,
+      "reason": "Synthetic fixture timing",
+      "emphasis_word_ids": []
+    },
+    "hook_take_fixture_2": {
+      "id": "hook_take_fixture_2",
+      "line_id": "hook_line_fixture_2",
+      "word_ids": [
+        "w_f78af41e70f9be07_4",
+        "w_f78af41e70f9be07_5",
+        "w_f78af41e70f9be07_6",
+        "w_f78af41e70f9be07_7"
+      ],
+      "role": "hook",
+      "source_id": "source_hooks",
+      "selected": true,
+      "score": 100,
+      "reason": "Synthetic fixture timing",
+      "emphasis_word_ids": []
+    },
+    "hook_take_fixture_3": {
+      "id": "hook_take_fixture_3",
+      "line_id": "hook_line_fixture_3",
+      "word_ids": [
+        "w_f78af41e70f9be07_8",
+        "w_f78af41e70f9be07_9",
+        "w_f78af41e70f9be07_10",
+        "w_f78af41e70f9be07_11"
+      ],
+      "role": "hook",
+      "source_id": "source_hooks",
+      "selected": true,
+      "score": 100,
+      "reason": "Synthetic fixture timing",
+      "emphasis_word_ids": []
+    },
+    "hook_take_fixture_4": {
+      "id": "hook_take_fixture_4",
+      "line_id": "hook_line_fixture_4",
+      "word_ids": [
+        "w_f78af41e70f9be07_12",
+        "w_f78af41e70f9be07_13",
+        "w_f78af41e70f9be07_14",
+        "w_f78af41e70f9be07_15"
+      ],
+      "role": "hook",
+      "source_id": "source_hooks",
+      "selected": true,
+      "score": 100,
+      "reason": "Synthetic fixture timing",
+      "emphasis_word_ids": []
+    }
+  },
+  "hooks": [
+    {
+      "id": "hook_fixture_1",
+      "proposed_text": "Clear audio holds attention.",
+      "take_id": "hook_take_fixture_1",
+      "visual_titles": [
+        {
+          "id": "hook_fixture_1_title_1",
+          "template_id": "fixture_title_1",
+          "text": "Clear audio holds attention",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_1_title_2",
+          "template_id": "fixture_title_2",
+          "text": "Trim pauses between ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_1_title_3",
+          "template_id": "fixture_title_3",
+          "text": "Put your hook first",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_1_title_4",
+          "template_id": "fixture_title_4",
+          "text": "Clear audio, sharper ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip_360b31ee1a19cd11be68b8a8",
+          "source_id": "source_hooks",
+          "line_id": "hook_line_fixture_1",
+          "take_id": "hook_take_fixture_1",
+          "role": "hook",
+          "source_start_ms": 90,
+          "source_end_ms": 1765,
+          "selection_reason": "Synthetic fixture timing"
+        }
+      ]
+    },
+    {
+      "id": "hook_fixture_2",
+      "proposed_text": "Trim pauses between ideas.",
+      "take_id": "hook_take_fixture_2",
+      "visual_titles": [
+        {
+          "id": "hook_fixture_2_title_1",
+          "template_id": "fixture_title_1",
+          "text": "Clear audio holds attention",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_2_title_2",
+          "template_id": "fixture_title_2",
+          "text": "Trim pauses between ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_2_title_3",
+          "template_id": "fixture_title_3",
+          "text": "Put your hook first",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_2_title_4",
+          "template_id": "fixture_title_4",
+          "text": "Clear audio, sharper ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip_f0125b8e5881e3f5cb2c4053",
+          "source_id": "source_hooks",
+          "line_id": "hook_line_fixture_2",
+          "take_id": "hook_take_fixture_2",
+          "role": "hook",
+          "source_start_ms": 2090,
+          "source_end_ms": 3765,
+          "selection_reason": "Synthetic fixture timing"
+        }
+      ]
+    },
+    {
+      "id": "hook_fixture_3",
+      "proposed_text": "Put your hook first.",
+      "take_id": "hook_take_fixture_3",
+      "visual_titles": [
+        {
+          "id": "hook_fixture_3_title_1",
+          "template_id": "fixture_title_1",
+          "text": "Clear audio holds attention",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_3_title_2",
+          "template_id": "fixture_title_2",
+          "text": "Trim pauses between ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_3_title_3",
+          "template_id": "fixture_title_3",
+          "text": "Put your hook first",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_3_title_4",
+          "template_id": "fixture_title_4",
+          "text": "Clear audio, sharper ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip_0d46148c9b9bdf4cdf66084c",
+          "source_id": "source_hooks",
+          "line_id": "hook_line_fixture_3",
+          "take_id": "hook_take_fixture_3",
+          "role": "hook",
+          "source_start_ms": 4090,
+          "source_end_ms": 5765,
+          "selection_reason": "Synthetic fixture timing"
+        }
+      ]
+    },
+    {
+      "id": "hook_fixture_4",
+      "proposed_text": "Clear audio, sharper ideas.",
+      "take_id": "hook_take_fixture_4",
+      "visual_titles": [
+        {
+          "id": "hook_fixture_4_title_1",
+          "template_id": "fixture_title_1",
+          "text": "Clear audio holds attention",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_4_title_2",
+          "template_id": "fixture_title_2",
+          "text": "Trim pauses between ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_4_title_3",
+          "template_id": "fixture_title_3",
+          "text": "Put your hook first",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        },
+        {
+          "id": "hook_fixture_4_title_4",
+          "template_id": "fixture_title_4",
+          "text": "Clear audio, sharper ideas",
+          "slots": {},
+          "missing_slots": [],
+          "ready": true
+        }
+      ],
+      "clips": [
+        {
+          "id": "clip_c62e8b3ef740fb3c2f35538a",
+          "source_id": "source_hooks",
+          "line_id": "hook_line_fixture_4",
+          "take_id": "hook_take_fixture_4",
+          "role": "hook",
+          "source_start_ms": 6090,
+          "source_end_ms": 7765,
+          "selection_reason": "Synthetic fixture timing"
+        }
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "id": "fixture_title_1",
+      "pattern": "Clear audio holds attention",
+      "slots": []
+    },
+    {
+      "id": "fixture_title_2",
+      "pattern": "Trim pauses between ideas",
+      "slots": []
+    },
+    {
+      "id": "fixture_title_3",
+      "pattern": "Put your hook first",
+      "slots": []
+    },
+    {
+      "id": "fixture_title_4",
+      "pattern": "Clear audio, sharper ideas",
+      "slots": []
+    }
+  ],
+  "plan": {
+    "schema_version": 1,
+    "revision": 0,
+    "target_duration_ms": 120000,
+    "duration_ms": 10825,
+    "target_met": true,
+    "selected_hook_id": "hook_fixture_1",
+    "selected_visual_title_id": "hook_fixture_1_title_1",
+    "clips": [
+      {
+        "id": "clip_360b31ee1a19cd11be68b8a8",
+        "source_id": "source_hooks",
+        "line_id": "hook_line_fixture_1",
+        "take_id": "hook_take_fixture_1",
+        "role": "hook",
+        "source_start_ms": 90,
+        "source_end_ms": 1765,
+        "selection_reason": "Synthetic fixture timing"
+      },
+      {
+        "id": "clip_cfc56e44b7b006a4fe0bdb5d",
+        "source_id": "source_body",
+        "line_id": "line_fixture_1",
+        "take_id": "take_fixture_1",
+        "role": "body",
+        "source_start_ms": 330,
+        "source_end_ms": 3380,
+        "selection_reason": "Synthetic fixture line for pipeline verification."
+      },
+      {
+        "id": "clip_f098c6464e24713643f48d1c",
+        "source_id": "source_body",
+        "line_id": "line_fixture_2",
+        "take_id": "take_fixture_2",
+        "role": "body",
+        "source_start_ms": 4330,
+        "source_end_ms": 7380,
+        "selection_reason": "Synthetic fixture line for pipeline verification."
+      },
+      {
+        "id": "clip_20fe243794d08ac80d36b86d",
+        "source_id": "source_body",
+        "line_id": "line_fixture_3",
+        "take_id": "take_fixture_3",
+        "role": "body",
+        "source_start_ms": 8330,
+        "source_end_ms": 11380,
+        "selection_reason": "Synthetic fixture line for pipeline verification."
+      }
+    ],
+    "dropped_lines": [],
+    "dead_space": {
+      "enabled": true,
+      "threshold_ms": 700,
+      "retain_ms": 250
+    },
+    "hook_overlay": {
+      "text": "Clear audio holds attention",
+      "position": {
+        "x": 0.44,
+        "y": 0.24
+      },
+      "hold_ms": 12000,
+      "fade_ms": 300
+    },
+    "audio": {
+      "normalization_enabled": true,
+      "preset": "speech_consistent"
+    },
+    "caption_style": {
+      "preset": "classic_box",
+      "position": {
+        "x": 0.44,
+        "y": 0.7
+      }
+    },
+    "captions": [
+      {
+        "id": "caption_7ded7a28441e76d35637b96e",
+        "clip_id": "clip_360b31ee1a19cd11be68b8a8",
+        "start_ms": 150,
+        "end_ms": 1525,
+        "words": [
+          {
+            "word_id": "w_f78af41e70f9be07_0",
+            "text": "Clear"
+          },
+          {
+            "word_id": "w_f78af41e70f9be07_1",
+            "text": "audio"
+          },
+          {
+            "word_id": "w_f78af41e70f9be07_2",
+            "text": "holds"
+          },
+          {
+            "word_id": "w_f78af41e70f9be07_3",
+            "text": "attention."
+          }
+        ],
+        "emphasis_word_id": "w_f78af41e70f9be07_3"
+      },
+      {
+        "id": "caption_552374b5dc9955bfaf95f51e",
+        "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
+        "start_ms": 1825,
+        "end_ms": 3135,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_0",
+            "text": "Clear"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_1",
+            "text": "audio"
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_1"
+      },
+      {
+        "id": "caption_27a7ddabdbb62aa3de21914d",
+        "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
+        "start_ms": 3265,
+        "end_ms": 4575,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_2",
+            "text": "holds"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_3",
+            "text": "attention."
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_3"
+      },
+      {
+        "id": "caption_aaa3b280a1eac255ce882022",
+        "clip_id": "clip_f098c6464e24713643f48d1c",
+        "start_ms": 4875,
+        "end_ms": 6185,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_4",
+            "text": "Trim"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_5",
+            "text": "pauses"
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_5"
+      },
+      {
+        "id": "caption_4003405f6cd8de656bcdc44a",
+        "clip_id": "clip_f098c6464e24713643f48d1c",
+        "start_ms": 6315,
+        "end_ms": 7625,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_6",
+            "text": "between"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_7",
+            "text": "ideas."
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_6"
+      },
+      {
+        "id": "caption_c2e4a75c869e9dfa7a0ea7d4",
+        "clip_id": "clip_20fe243794d08ac80d36b86d",
+        "start_ms": 7925,
+        "end_ms": 9235,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_8",
+            "text": "Put"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_9",
+            "text": "your"
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_9"
+      },
+      {
+        "id": "caption_6f40cf6d585d60c5b7d8af79",
+        "clip_id": "clip_20fe243794d08ac80d36b86d",
+        "start_ms": 9365,
+        "end_ms": 10675,
+        "words": [
+          {
+            "word_id": "w_eaecee90301162c8_10",
+            "text": "hook"
+          },
+          {
+            "word_id": "w_eaecee90301162c8_11",
+            "text": "first."
+          }
+        ],
+        "emphasis_word_id": "w_eaecee90301162c8_11"
+      }
+    ],
+    "caption_edits": []
+  }
+}

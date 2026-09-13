@@ -174,7 +174,7 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 
 ## Implementation prerequisites
 
-- A project API key with verified `gpt-6-astra` access. The task environment has no `OPENAI_API_KEY` configured.
+- A restricted backend API key has verified `gpt-6-astra` access through the live provider and HTTP checks. Service variables hold the hosted key; the local `.env` is ignored and permission-restricted.
 - Vanessa's visual hook title templates and permitted talking-head footage. Kaung settles the filming schedule.
 - Measure a representative portrait 1080p/30 phone file to set the byte limit.
 - Use the caption default specified above for implementation.

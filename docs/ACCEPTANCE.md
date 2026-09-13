@@ -1,0 +1,45 @@
+# Acceptance evidence
+
+13 September 2026. Kaung's backend and endpoint lab have local API, provider, media, and client evidence. Synthetic spoken footage exercises real `whisper-1`, `gpt-6-astra`, and ffmpeg requests. Explicit fixture mode exercises deterministic editorial output. Vanessa's production capture, teleprompter, timeline, and device recovery acceptance use their own app and phone checks.
+
+## Verified runs
+
+| Run | Recorded result | Evidence |
+| --- | --- | --- |
+| Backend suite | 72 tests pass in 13.71 seconds | `uv run pytest backend/tests -q`; named tests below |
+| Python lint | Pass | `uv run ruff check backend scripts` |
+| Live provider | 32 body words, four body takes, four spoken hooks, 16 evidence-valid titles, four recorded hook matches; 52.0 seconds | Local `artifacts/provider-live/report.json` |
+| Live HTTP pipeline | 17 checks pass in 100.1 seconds; two drafts and one export downloaded | Local `artifacts/api-smoke-live/report.json` |
+| Fixture HTTP pipeline | 17 checks pass in 27.6 seconds | Local `artifacts/api-smoke-fixture-v2/report.json` |
+| Container | Health, mounted-storage recovery after restart, one worker, and TikTok Sans pass | Local `artifacts/provider-live/container-report.json` |
+| Expo client | TypeScript, six tests, web export, and Expo dependency check pass; browser health request returns 200 | `clients/endpoint-lab`; [client commands](CLIENT.md#verification) |
+| Native extraction core | Zero sample shift; 48,000 reference samples and 48,064 decoded AAC samples; 200 ms source delay preserved | `python3 clients/endpoint-lab/scripts/probe-native-audio.py`; [timing evidence](CLIENT.md#native-extraction-contract-and-evidence) |
+
+The artifact directories are local and ignored by Git. The checked-in [smoke command](../scripts/smoke.py), [source-backed fixture](../fixtures/project.json), and [media generator](../scripts/generate_media_fixture.py) reproduce the checks. Recovery tokens stay in local permission-restricted session files.
+
+## Product and handoff matrix
+
+| Acceptance requirement | Evidence and implemented behavior | Remaining acceptance |
+| --- | --- | --- |
+| Continuous body produces an editable cut and four hooks with four titles each | Live provider and HTTP reports produce four hooks and 16 title choices. Provider tests reject invented references and unsupported slot values. | Vanessa supplies final visual templates and permitted talking-head footage. Live evidence uses synthetic speech. |
+| Starting scripts, free recording, editable hook teleprompter | Source registration accepts ordered hook IDs and edited text; the lab exposes those fields and suggestion edits. | Vanessa's recording and teleprompter controls, including continuous hook capture. |
+| Edit body while hooks process; hook first in each output | `test_hooks_attach_to_current_body_and_render_captures_snapshot`, editing hook-prepend test, and live smoke preserve the saved body. Media pixel checks distinguish the leading hook and following body. | Production timeline preview and hook switching on a phone. |
+| Selected combinations share one body and produce separate MP4s | API accepts unique subsets of up to 16 combinations. Live smoke downloads two 540x960 drafts and one 1080x1920 export, all H.264/AAC at 30 fps. | Sixteen-output batch throughput and production selection UI. |
+| Trims, reorder, manual titles, captions, additions, and deletions survive save/render | Editing tests cover repeated occurrences, range clamps, overrides, additions, deletions, and hook offsets. Live smoke saves and reloads trim/reorder/manual-caption changes. Worker ranking test preserves creator title and caption state. | Production gesture behavior and phone preview parity. |
+| Audio-first draft while original transfers; export waits for media | `test_audio_first_plan_and_revision_conflict` opens a plan with video pending and checks `media_pending`. Live smoke proves this ordering. Lab audio and original controls run independently. | Draft playback against durable local phone media during upload. |
+| AI completion preserves edits and proposes revision-bound changes | API race test checks a result arriving after manual editing. Worker cancellation test blocks result publication after cancellation. Rank snapshot test preserves captured edits and rejects stale application. | Production proposal review UI. |
+| Target changes retain dropped material and report actual duration | Whole-line ranking and rank snapshot tests preserve source order, dropped text, hook duration allowance, and target bounds. The canonical plan derives duration. | Editorial quality and latency with representative 90–180 second finished videos. |
+| Audio treatment preserves timing and reduces level mismatch | Media test renders 4,004 ms of audio with 120 globally allocated video frames; hook/body RMS difference is below 1 dB, integrated loudness is within 1 LU of -16, and true peak is at most -1.2 dBTP. Toggle/export test preserves untreated level. | Listening check on representative phone recordings and hardware. |
+| Advisory delivery feedback identifies take and body revision | Live smoke checks advisory revision-bound feedback. Worker test reuses measurements for title edits and recalculates after an opening trim. | Vanessa's keep, play-transition, and retake actions. |
+| Original verification, resume, expiry, retry, and deletion | API tests cover idempotent parts, mismatching bytes, size/manifest errors, authorization, cancellation, restart, expiry, and deletion. Worker retry test preserves verified original bytes and verification time after normalization failure. Live smoke verifies both originals. Slow uploads return retryable HTTP 408 and release temporary files and reserved capacity, including when event-loop work delays cancellation. | Representative phone file measurement for the configured byte cap; extended upload and storage-pressure checks. |
+| Canonical source time, rotation, audio gaps, and immutable originals | Media tests cover origin/delay mapping, AAC priming, leading silence, rotation, silent sources, and frame allocation. The worker retry test preserves original bytes. Native core probe independently checks decoded alignment. | HEVC/VFR camera footage and long recording checks on target phones. |
+| Completed originals and edits survive local interruption | Lab native picker saves Documents copies; alternating journals and orphan-file recovery controls preserve a recoverable source record. Server container restart retains stored project state. The client regression preserves source audio metadata and upload acknowledgements in either completion order. | Device restart, offline, app termination, calls, low storage, camera interruption, and finalized checkpoint recovery in Vanessa's capture implementation. |
+| Storage labels and deletion meanings remain accurate | Server exposes verified temporary processing storage with expiry and `restore_capable: false`. Plan edits retain originals. Source deletion checks dependencies; project deletion cancels work. | Account-linked restore, durable retention, and a successful restore test before enabling Backed up or Free device space. |
+| Native extraction, Photos export, playable web download | Shared AVFoundation core passes host execution and iOS-target compilation. Client smoke downloads `/tmp/editmaxxing-endpoint-smoke.mp4`; ffprobe reports 540x960 H.264/AAC at 30 fps. | Xcode SDK agreement approval, full native development build, extraction through the Expo bridge on a phone, and Save to Photos. |
+| Public judge link and labeled sample | Checked-in fixtures identify synthetic media and analysis. Local live export and sample frames exist under `artifacts/api-smoke-live/`. Docker startup and persistent storage pass locally. | Railway public deployment verification, Vanessa's web deployment, signed-out judge walkthrough, permitted sample project, and the 90-second demo video. |
+
+## Native build state
+
+Xcode 26.6, build 17F112, is installed from Apple's App Store. The displayed Xcode and Apple SDKs Agreement awaits user approval. Full Expo 57 compilation follows that approval. The native core proof covers AVFoundation extraction on macOS and compilation for `arm64-apple-ios16.4`; phone execution and interruption recovery require device evidence.
+
+The local rendered export is `artifacts/api-smoke-live/export-combo_1.mp4`. Its hook and body frame inspections are `export-frame.png` and `export-body-frame.png` in the same directory. [CLIENT.md](CLIENT.md), [PROVIDERS.md](PROVIDERS.md), and [DEPLOYMENT.md](DEPLOYMENT.md) contain the commands and operating contract.

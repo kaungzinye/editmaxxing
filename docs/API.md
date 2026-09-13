@@ -110,3 +110,49 @@ Project tokens support the demo processing API. Account-linked project discovery
 Routine cleanup targets derivatives, cache, and expired processing copies. The client retains local originals while cloud copies are temporary. Free device space requires verified durable storage and restore authorization, retaining the local project manifest for download on demand. Delete original checks dependent edits and requires an explicit source-deletion action. Removing a clip from a plan changes the plan alone.
 
 Project deletion creates a tombstone, cancels work, and queues remote media and metadata deletion. Workers and upload finalization check the tombstone before publishing results. Return 202 with a deletion job ID and report success after remote deletion finishes. The client coordinates local deletion from the user's stated scope and persists pending remote deletion for retry. Expiry and deletion invalidate media access. Captured recordings shared across edits require dependency-aware deletion.
+
+## Implemented transport and response fields
+
+Send `Authorization: Bearer <project_token>` on project, source, and job requests. Project creation returns `{project_id, project_token, expires_at}`. Expiry values are Unix timestamps in seconds. Times inside media manifests and plans are integer milliseconds.
+
+Audio and part uploads contain raw bytes with `Content-Type: application/octet-stream` and `X-Content-SHA256`, the lowercase SHA-256 of that request's bytes. Audio also sends `X-Timing-Manifest` containing a compact JSON timing manifest. Its SHA-256 describes the extracted audio. The source `fingerprint` and original upload `sha256` both describe the full captured original.
+
+```json
+{
+  "source_id": "src_body_1",
+  "role": "body",
+  "duration_ms": 10000,
+  "fingerprint": "<64 lowercase SHA-256 hex characters>",
+  "timing": {
+    "media_origin_ms": 0,
+    "encoder_delay_ms": 0,
+    "duration_ms": 10000,
+    "sample_rate": 48000,
+    "extractor": "original"
+  },
+  "hook_scripts": []
+}
+```
+
+`timing.duration_ms` equals the registered source duration. The separate audio manifest describes decoded extracted audio. Its mapping is `canonical_ms = decoded_media_ms + media_origin_ms - encoder_delay_ms`. AAC packet priming and container duration can differ from decoded media. The AVFoundation adapter reports zero encoder delay because decoding applies its AAC skip-sample metadata. Server audio normalization measures decoded samples and preserves leading source silence.
+
+Create an original upload with `{size_bytes, sha256}`. The response and upload GET contain `{upload_id, part_size, size_bytes, sha256, parts, state, expires_at}`. Parts use zero-based numbers and contain `{part, sha256, size_bytes}`. Acknowledged parts are authoritative. Verify their hashes against the selected local file, send missing ranges, and complete with `{parts: [{part: 0, sha256: "..."}, ...]}` in ascending order.
+
+Queued operations return `{job_id}`. Project analysis retry also returns `job_ids` when it queues work for several sources. Job GET contains `id`, `project_id`, `state`, `stage`, `progress`, `result`, and `error`. It also exposes `kind` and timestamps. Cancellation uses state `cancelled`. Poll queued and running work while the app is active.
+
+Project GET returns `project_id`, `name`, `sources`, `words`, `analysis`, `takes`, `hooks`, `templates`, `proposals`, `feedback`, `outputs`, `plan`, and `expires_at`. `sources` and `takes` are ID-keyed objects. `analysis` uses an immutable analysis hash as its key; each record contains its source ID. Source records expose separate `audio_state`, `video_state`, and `storage`. Verified processing storage contains `original_verified`, `sha256`, `size_bytes`, `verified_at`, `copy_kind: "processing"`, `expires_at`, and `restore_capable: false`. Available media has `{url, expires_at}` under `raw_audio_media`, `audio_media`, `editing_media`, or `original_media`.
+
+A proposal contains `{id, base_revision, analysis_refs, plan}`. Apply it through plan save with `{base_revision, plan, proposal_id}`. A canonical plan includes `caption_edits`; each manual edit identifies `clip_id`, a source-time range, replacement word IDs, creator words, and a deletion flag. The source anchors apply to one clip occurrence and survive reorder operations. Save returns the canonical plan directly.
+
+A spoken hook contains `id`, `proposed_text`, `take_id`, `visual_titles`, `candidates`, and `clips`. A recorded candidate contains `{take_id, source_id, confidence, reason}`. Render job results contain `{plan_revision, outputs}`. Each output includes `combination_id`, `plan_revision`, `hook_take_id`, `kind`, `metadata`, `url`, and `expires_at`. Fetching the project refreshes output URLs.
+
+| Additional route | Request and behavior |
+| --- | --- |
+| `PUT /projects/{id}/templates` | `{templates: [{id, pattern, slots}, ...]}`, exactly four supplied templates |
+| `PUT /projects/{id}/hooks/{hook_id}` | Edited `proposed_text`, selected candidate `take_id`, or both |
+| `POST /jobs/{id}/cancel` | Cancel queued or running work; deletion completes through its own job |
+| `GET /projects/{id}/sources/{source_id}/dependencies` | Current clip IDs, saved revisions, and hook references |
+| `DELETE /projects/{id}/sources/{source_id}?confirm=true` | Explicit original deletion after inspecting dependencies; active use returns a conflict |
+| `POST /projects/{id}/sources/{source_id}/fixture` | Enable synthetic analysis for a registered source before audio upload; requires `ENABLE_FIXTURES=true` |
+
+Fixture mode labels synthetic transcript and editorial output explicitly. Its upload verification, normalization, canonical plan handling, and rendering process real media. The endpoint lab walkthrough and native validation boundaries are in [CLIENT.md](CLIENT.md).

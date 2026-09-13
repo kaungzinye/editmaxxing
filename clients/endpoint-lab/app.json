@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "editmaxxing endpoint lab",
+    "slug": "editmaxxing-endpoint-lab",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "editmaxxing-lab",
+    "ios": {
+      "bundleIdentifier": "com.editmaxxing.endpointlab",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Connect to the development API on your local network.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": true
+        },
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
+      }
+    },
+    "android": {
+      "package": "com.editmaxxing.endpointlab"
+    },
+    "plugins": [
+      "expo-document-picker",
+      "expo-video",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

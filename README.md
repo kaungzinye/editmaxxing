@@ -1,18 +1,69 @@
 # editmaxxing
 
-A mobile video editor for tech creators. Record a continuous talking-head body with an optional script teleprompter and receive one complete body cut. Edit and record four suggested spoken hooks through the teleprompter, each with four visual titles based on Vanessa's templates. Edit the timeline, titles, and captions, then export selected combinations targeting 90 to 180 seconds.
+FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes four spoken hooks, fills supplied title templates, and gives advisory delivery feedback. Code constructs clip ranges, captions, revision-bound proposals, and immutable render snapshots.
 
-This repository contains the product plan, API contract, shared TypeScript types, and synthetic sample data. The app implementation is the next build step.
+Kaung's implementation lives in `backend/`. The isolated Expo integration client lives in `clients/endpoint-lab`. Vanessa owns the production app, recording experience, timeline gestures, and visual title templates. All bundled UI and rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
 
-- [Product and build plan](PLAN.md)
-- [API contract](docs/API.md)
-- [Shared types](contracts/plan.ts)
-- [Sample plan](fixtures/plan.json)
+## Run locally
 
-Stack: Expo with Expo Router, FastAPI, ffmpeg, hosted Whisper transcription, and `gpt-6-astra` analysis. Deployment target: Railway backend and Expo web app.
+Install Python 3.12–3.14, [uv](https://docs.astral.sh/uv/), and ffmpeg. From this directory:
 
-Kaung owns the backend and rendering. Vanessa owns the Expo app, visual hook title UI, and title templates.
+```sh
+uv sync
+cp .env.example .env
+# Set OPENAI_API_KEY in .env.
+uv run uvicorn editmaxxing.app:app --host 0.0.0.0 --port 8000
+```
 
-The processing design prioritizes audio upload and local-video editing while full video uploads. AI proposals reference timeline revisions. Audio normalization matches listening levels, and advisory hook/body delivery feedback offers a retake when useful.
+Open [API docs](http://localhost:8000/docs) and [health](http://localhost:8000/healthz). The API uses `/api/v1`. Keep one API process and one replica per storage volume. SQLite records projects, upload acknowledgements, jobs, and edit revisions. Originals and reproducible derivatives use separate directories under `STORAGE_ROOT`.
 
-Original recordings stay in a private project library. Edits reference those originals. The design includes durable local saves, resumable verified uploads, explicit deletion, and storage status that distinguishes temporary processing copies from recoverable cloud backups.
+Start the endpoint lab in another terminal:
+
+```sh
+cd clients/endpoint-lab
+npm ci
+npm run web
+```
+
+Enter `http://localhost:8000` as the API origin. A phone needs the computer's LAN address. Set exact web origins in `CORS_ORIGINS`. [Client walkthrough](docs/CLIENT.md) covers file preparation, native extraction, upload recovery, editing, hooks, and playback.
+
+## Exercise the complete pipeline
+
+The live smoke creates explicitly synthetic spoken media using macOS `say`, then calls real Whisper/Astra and ffmpeg endpoints. It checks audio-first analysis, trim/reorder/caption saves, revision conflicts, hook attachment, verified upload retries, two draft combinations, one 1080p export, signed media, and delivery feedback.
+
+```sh
+uv run python scripts/smoke.py --base-url http://localhost:8000 --synthetic --output-dir artifacts/smoke
+```
+
+For deterministic analysis, start the API with `ENABLE_FIXTURES=true` and add `--fixture` to the smoke command. The fixture route marks each source explicitly before audio upload. Ordinary audio uploads use OpenAI. Generated source media and transcripts are described in [fixtures](fixtures/README.md).
+
+```sh
+uv run pytest backend/tests -q
+uv run ruff check backend scripts
+cd clients/endpoint-lab
+npm run typecheck
+npm test
+npm run export
+```
+
+## Deploy
+
+The Dockerfile includes Python, ffmpeg, the backend, and TikTok Sans. Mount persistent storage at `/data`, expose `PORT`, use `/healthz` for readiness, and run one replica. The image excludes `.env`, originals, test artifacts, and the client build. [Deployment settings](docs/DEPLOYMENT.md) lists the Railway configuration and resource limits.
+
+```sh
+docker build -t editmaxxing .
+docker run --rm -p 8000:8000 --env-file .env -v editmaxxing-data:/data editmaxxing
+```
+
+Projects receive opaque bearer tokens. Media URLs expire and refresh through project reads. Server copies carry an explicit processing expiry, default 24 hours. Durable cloud backup and account-linked restore require a separate implementation. Local original protection belongs to the capture app.
+
+## Integration references
+
+- [Product plan and ownership](PLAN.md)
+- [API routes, transport, and concurrency](docs/API.md)
+- [Shared TypeScript contracts](contracts/plan.ts)
+- [Provider requests and live verification](docs/PROVIDERS.md)
+- [Endpoint client and native extraction evidence](docs/CLIENT.md)
+- [Source-backed fixture](fixtures/project.json)
+
+Vanessa supplies four title templates with named slots through the template endpoint. Missing evidence appears as an unfilled slot and excludes that title from automatic export. Creator title text and caption edits persist separately from generated content.

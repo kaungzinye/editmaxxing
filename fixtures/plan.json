@@ -1,30 +1,51 @@
 {
   "schema_version": 1,
-  "revision": 1,
+  "revision": 0,
   "target_duration_ms": 120000,
-  "duration_ms": 6000,
+  "duration_ms": 10825,
   "target_met": true,
-  "selected_hook_id": "hook_1",
+  "selected_hook_id": "hook_fixture_1",
+  "selected_visual_title_id": "hook_fixture_1_title_1",
   "clips": [
     {
-      "id": "clip_1",
-      "source_id": "source_1",
-      "line_id": "line_1",
-      "take_id": "take_1",
+      "id": "clip_360b31ee1a19cd11be68b8a8",
+      "source_id": "source_hooks",
+      "line_id": "hook_line_fixture_1",
+      "take_id": "hook_take_fixture_1",
       "role": "hook",
-      "source_start_ms": 1000,
-      "source_end_ms": 3000,
-      "selection_reason": "The speaker holds eye contact through the hook."
+      "source_start_ms": 90,
+      "source_end_ms": 1765,
+      "selection_reason": "Synthetic fixture timing"
     },
     {
-      "id": "clip_2",
-      "source_id": "source_1",
-      "line_id": "line_2",
-      "take_id": "take_2",
+      "id": "clip_cfc56e44b7b006a4fe0bdb5d",
+      "source_id": "source_body",
+      "line_id": "line_fixture_1",
+      "take_id": "take_fixture_1",
       "role": "body",
-      "source_start_ms": 10000,
-      "source_end_ms": 14000,
-      "selection_reason": "The take contains the complete explanation."
+      "source_start_ms": 330,
+      "source_end_ms": 3380,
+      "selection_reason": "Synthetic fixture line for pipeline verification."
+    },
+    {
+      "id": "clip_f098c6464e24713643f48d1c",
+      "source_id": "source_body",
+      "line_id": "line_fixture_2",
+      "take_id": "take_fixture_2",
+      "role": "body",
+      "source_start_ms": 4330,
+      "source_end_ms": 7380,
+      "selection_reason": "Synthetic fixture line for pipeline verification."
+    },
+    {
+      "id": "clip_20fe243794d08ac80d36b86d",
+      "source_id": "source_body",
+      "line_id": "line_fixture_3",
+      "take_id": "take_fixture_3",
+      "role": "body",
+      "source_start_ms": 8330,
+      "source_end_ms": 11380,
+      "selection_reason": "Synthetic fixture line for pipeline verification."
     }
   ],
   "dropped_lines": [],
@@ -34,13 +55,17 @@
     "retain_ms": 250
   },
   "hook_overlay": {
-    "text": "I tried a phone editor for 7 days",
+    "text": "Clear audio holds attention",
     "position": {
       "x": 0.44,
       "y": 0.24
     },
     "hold_ms": 12000,
     "fade_ms": 300
+  },
+  "audio": {
+    "normalization_enabled": true,
+    "preset": "speech_consistent"
   },
   "caption_style": {
     "preset": "classic_box",
@@ -51,55 +76,132 @@
   },
   "captions": [
     {
-      "id": "caption_1",
-      "clip_id": "clip_1",
+      "id": "caption_7ded7a28441e76d35637b96e",
+      "clip_id": "clip_360b31ee1a19cd11be68b8a8",
       "start_ms": 150,
-      "end_ms": 1500,
+      "end_ms": 1525,
       "words": [
         {
-          "word_id": "w1",
-          "text": "Try"
+          "word_id": "w_f78af41e70f9be07_0",
+          "text": "Clear"
         },
         {
-          "word_id": "w2",
-          "text": "this"
+          "word_id": "w_f78af41e70f9be07_1",
+          "text": "audio"
         },
         {
-          "word_id": "w3",
-          "text": "editor."
+          "word_id": "w_f78af41e70f9be07_2",
+          "text": "holds"
+        },
+        {
+          "word_id": "w_f78af41e70f9be07_3",
+          "text": "attention."
         }
       ],
-      "emphasis_word_id": "w3"
+      "emphasis_word_id": "w_f78af41e70f9be07_3"
     },
     {
-      "id": "caption_2",
-      "clip_id": "clip_2",
-      "start_ms": 2200,
-      "end_ms": 3600,
+      "id": "caption_552374b5dc9955bfaf95f51e",
+      "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
+      "start_ms": 1825,
+      "end_ms": 3135,
       "words": [
         {
-          "word_id": "w4",
-          "text": "It"
+          "word_id": "w_eaecee90301162c8_0",
+          "text": "Clear"
         },
         {
-          "word_id": "w5",
-          "text": "cuts"
-        },
-        {
-          "word_id": "w6",
-          "text": "the"
-        },
-        {
-          "word_id": "w7",
-          "text": "pauses."
+          "word_id": "w_eaecee90301162c8_1",
+          "text": "audio"
         }
       ],
-      "emphasis_word_id": "w7"
+      "emphasis_word_id": "w_eaecee90301162c8_1"
+    },
+    {
+      "id": "caption_27a7ddabdbb62aa3de21914d",
+      "clip_id": "clip_cfc56e44b7b006a4fe0bdb5d",
+      "start_ms": 3265,
+      "end_ms": 4575,
+      "words": [
+        {
+          "word_id": "w_eaecee90301162c8_2",
+          "text": "holds"
+        },
+        {
+          "word_id": "w_eaecee90301162c8_3",
+          "text": "attention."
+        }
+      ],
+      "emphasis_word_id": "w_eaecee90301162c8_3"
+    },
+    {
+      "id": "caption_aaa3b280a1eac255ce882022",
+      "clip_id": "clip_f098c6464e24713643f48d1c",
+      "start_ms": 4875,
+      "end_ms": 6185,
+      "words": [
+        {
+          "word_id": "w_eaecee90301162c8_4",
+          "text": "Trim"
+        },
+        {
+          "word_id": "w_eaecee90301162c8_5",
+          "text": "pauses"
+        }
+      ],
+      "emphasis_word_id": "w_eaecee90301162c8_5"
+    },
+    {
+      "id": "caption_4003405f6cd8de656bcdc44a",
+      "clip_id": "clip_f098c6464e24713643f48d1c",
+      "start_ms": 6315,
+      "end_ms": 7625,
+      "words": [
+        {
+          "word_id": "w_eaecee90301162c8_6",
+          "text": "between"
+        },
+        {
+          "word_id": "w_eaecee90301162c8_7",
+          "text": "ideas."
+        }
+      ],
+      "emphasis_word_id": "w_eaecee90301162c8_6"
+    },
+    {
+      "id": "caption_c2e4a75c869e9dfa7a0ea7d4",
+      "clip_id": "clip_20fe243794d08ac80d36b86d",
+      "start_ms": 7925,
+      "end_ms": 9235,
+      "words": [
+        {
+          "word_id": "w_eaecee90301162c8_8",
+          "text": "Put"
+        },
+        {
+          "word_id": "w_eaecee90301162c8_9",
+          "text": "your"
+        }
+      ],
+      "emphasis_word_id": "w_eaecee90301162c8_9"
+    },
+    {
+      "id": "caption_6f40cf6d585d60c5b7d8af79",
+      "clip_id": "clip_20fe243794d08ac80d36b86d",
+      "start_ms": 9365,
+      "end_ms": 10675,
+      "words": [
+        {
+          "word_id": "w_eaecee90301162c8_10",
+          "text": "hook"
+        },
+        {
+          "word_id": "w_eaecee90301162c8_11",
+          "text": "first."
+        }
+      ],
+      "emphasis_word_id": "w_eaecee90301162c8_11"
     }
   ],
-  "selected_visual_title_id": "hook_1_title_1",
-  "audio": {
-    "normalization_enabled": true,
-    "preset": "speech_consistent"
-  }
+  "caption_edits": []
 }
