@@ -1,0 +1,302 @@
+[
+  {
+    "id": "notes_return",
+    "technique": "reversal",
+    "subjects": "notes clutter cleanup deleting organization capture habit workspace",
+    "body_excerpt": "I deleted 400 notes. Within a week the clutter came back. I kept saving every passing thought in the same inbox. I called it being thorough, but I never reviewed that inbox. A daily review helped me decide what to keep.",
+    "spoken": "I deleted 400 notes. The clutter came back.",
+    "on_screen": "The habit I called thoroughness kept filling the same inbox",
+    "evidence": {
+      "spoken": ["I deleted 400 notes.", "Within a week the clutter came back."],
+      "on_screen": ["I kept saving every passing thought in the same inbox.", "I called it being thorough, but I never reviewed that inbox."]
+    },
+    "spoken_question": "Why did the clutter return?",
+    "on_screen_question": "Which habit did the creator mistake for thoroughness?",
+    "rationale": "The reversal opens a cause question. The title opens a separate question about the creator's justification."
+  },
+  {
+    "id": "editing_setting",
+    "technique": "concrete_cost",
+    "subjects": "edit editing video hours automation setting manual paid software export",
+    "body_excerpt": "Each edit took three hours. I was moving every caption by hand. The editor already included automatic caption alignment. I had paid for that feature, but I kept doing the manual pass because checking each caption felt reassuring. Turning alignment on cut that pass to twenty minutes.",
+    "spoken": "This edit took three hours. One setting explains why.",
+    "on_screen": "The part I kept doing by hand was already paid for",
+    "evidence": {
+      "spoken": ["Each edit took three hours.", "The editor already included automatic caption alignment."],
+      "on_screen": ["I had paid for that feature, but I kept doing the manual pass because checking each caption felt reassuring."]
+    },
+    "spoken_question": "Which setting caused the time difference?",
+    "on_screen_question": "Which manual task duplicated a paid feature?",
+    "rationale": "The speech names a measurable cost. The title adds the separate cost of an unused purchase."
+  },
+  {
+    "id": "export_audio",
+    "technique": "named_unknown",
+    "subjects": "video export audio silent sound muted track preset render",
+    "body_excerpt": "The video preview had sound, but the exported file was silent. The export preset had audio disabled. I had saved that preset while making a silent background loop last month. Selecting the interview preset restored sound without changing the timeline.",
+    "spoken": "My preview had sound. My export was silent.",
+    "on_screen": "A setting from last month's background loop followed this interview home",
+    "evidence": {
+      "spoken": ["The video preview had sound, but the exported file was silent."],
+      "on_screen": ["The export preset had audio disabled.", "I had saved that preset while making a silent background loop last month.", "Selecting the interview preset restored sound without changing the timeline."]
+    },
+    "spoken_question": "What made the export silent?",
+    "on_screen_question": "How did an unrelated project affect the interview?",
+    "rationale": "The speech establishes the failure. The title opens a question about where the setting came from."
+  },
+  {
+    "id": "almost_deleted",
+    "technique": "confession",
+    "subjects": "video draft deleted highest views plain opening boring post embarrassment",
+    "body_excerpt": "I almost deleted this draft because its opening looked too plain. It became my highest-viewed video that month. The opening used an unedited screen recording with my cursor hesitating over the publish button. People commented that they recognized that hesitation.",
+    "spoken": "I almost deleted my most-viewed video that month.",
+    "on_screen": "The awkward pause viewers recognized was the part I wanted gone",
+    "evidence": {
+      "spoken": ["I almost deleted this draft because its opening looked too plain.", "It became my highest-viewed video that month."],
+      "on_screen": ["The opening used an unedited screen recording with my cursor hesitating over the publish button.", "People commented that they recognized that hesitation."]
+    },
+    "spoken_question": "Why did the creator nearly delete it?",
+    "on_screen_question": "What did viewers recognize in the pause?",
+    "rationale": "The confession establishes a mistaken judgment. The title points to the audience's specific recognition."
+  },
+  {
+    "id": "draft_reopening",
+    "technique": "behavior_callout",
+    "subjects": "writing draft reopen morning unfinished task next sentence planning",
+    "body_excerpt": "Every morning I reopened the same unfinished draft and read from the beginning. I spent most of that time deciding where to start. Leaving myself one unfinished sentence gave me a place to continue. My morning writing sessions felt easier that week.",
+    "spoken": "Reopening the same draft every morning? Watch where you start.",
+    "on_screen": "Leaving one sentence unfinished made returning to this draft feel easier",
+    "evidence": {
+      "spoken": ["Every morning I reopened the same unfinished draft and read from the beginning.", "I spent most of that time deciding where to start."],
+      "on_screen": ["Leaving myself one unfinished sentence gave me a place to continue.", "My morning writing sessions felt easier that week."]
+    },
+    "spoken_question": "Where should the next writing session begin?",
+    "on_screen_question": "How did an unfinished sentence make returning easier?",
+    "rationale": "The speech identifies a recognizable behavior. The title introduces a small, counterintuitive change."
+  },
+  {
+    "id": "camera_light",
+    "technique": "belief_inversion",
+    "subjects": "camera expensive upgrade light lighting window image filming gear",
+    "body_excerpt": "I thought I needed a better camera for these interviews. Moving my chair toward the window made a bigger visible difference than switching cameras in this room. The expensive camera stayed on its automatic exposure setting, which kept brightening the wall behind me.",
+    "spoken": "Moving my chair beat upgrading my camera in this room.",
+    "on_screen": "The expensive camera kept making the wrong part of this room brighter",
+    "evidence": {
+      "spoken": ["Moving my chair toward the window made a bigger visible difference than switching cameras in this room."],
+      "on_screen": ["The expensive camera stayed on its automatic exposure setting, which kept brightening the wall behind me."]
+    },
+    "spoken_question": "Why did moving the chair help?",
+    "on_screen_question": "What was the camera choosing to expose?",
+    "rationale": "The speech challenges the proposed purchase within a specific setting. The title opens an exposure question."
+  },
+  {
+    "id": "single_lens",
+    "technique": "constraint",
+    "subjects": "camera lens travel packing limit one photography choices bag trip",
+    "body_excerpt": "I took one lens on this trip to fit everything in a small bag. I spent less time choosing equipment. To photograph the market stalls I had to stand farther back, which brought the sellers' surroundings into the pictures. I preferred those market photos.",
+    "spoken": "One lens changed where I stood on this trip.",
+    "on_screen": "The bag limit brought something I usually cropped out into these photos",
+    "evidence": {
+      "spoken": ["I took one lens on this trip to fit everything in a small bag.", "To photograph the market stalls I had to stand farther back, which brought the sellers' surroundings into the pictures."],
+      "on_screen": ["I took one lens on this trip to fit everything in a small bag.", "To photograph the market stalls I had to stand farther back, which brought the sellers' surroundings into the pictures."]
+    },
+    "spoken_question": "Why did the lens change the photographer's position?",
+    "on_screen_question": "What entered the pictures because of the bag limit?",
+    "rationale": "The speech names a physical change. The title asks about its effect on the pictures."
+  },
+  {
+    "id": "microphone_room",
+    "technique": "comparison",
+    "subjects": "microphone cheap expensive room echo sound audio recording blanket",
+    "body_excerpt": "I recorded the same sentence with a cheap microphone beside a blanket and an expensive microphone in the bare room. The cheap setup sounded clearer to me. The expensive one picked up the echo from the wall directly behind my desk. Moving the blanket reduced that echo too.",
+    "spoken": "My cheap microphone sounded clearer in this test.",
+    "on_screen": "The wall behind my desk had a bigger role than I expected",
+    "evidence": {
+      "spoken": ["I recorded the same sentence with a cheap microphone beside a blanket and an expensive microphone in the bare room.", "The cheap setup sounded clearer to me."],
+      "on_screen": ["The expensive one picked up the echo from the wall directly behind my desk.", "Moving the blanket reduced that echo too."]
+    },
+    "spoken_question": "What made the cheap setup sound clearer?",
+    "on_screen_question": "How did the wall affect the recording?",
+    "rationale": "The speech invites a bounded comparison. The title shifts attention toward the room."
+  },
+  {
+    "id": "automation_exception",
+    "technique": "exception",
+    "subjects": "automation automate client messages personal response review templates email",
+    "body_excerpt": "I automate the booking confirmations and reminders for client interviews. I write the first reply myself. That reply often reveals that the client is worried about a different topic from the one on the booking form. One conversation changed the questions I prepared for the interview.",
+    "spoken": "I automate client emails. One reply stays personal.",
+    "on_screen": "The booking form missed the concern that changed my interview questions",
+    "evidence": {
+      "spoken": ["I automate the booking confirmations and reminders for client interviews.", "I write the first reply myself."],
+      "on_screen": ["That reply often reveals that the client is worried about a different topic from the one on the booking form.", "One conversation changed the questions I prepared for the interview."]
+    },
+    "spoken_question": "Which reply stays personal, and why?",
+    "on_screen_question": "What concern did the form fail to capture?",
+    "rationale": "The exception opens a process question. The title adds the consequence for interview preparation."
+  },
+  {
+    "id": "fast_export",
+    "technique": "hidden_tradeoff",
+    "subjects": "export compression fast render video quality upload review text blurry",
+    "body_excerpt": "My faster export preset cut rendering time in half on this project. Small text became blurry. The client reviewed the blurry draft and asked me to replace text that was sharp in the source. Sending a clearer draft avoided that particular revision request the next time.",
+    "spoken": "My faster export bought me another revision.",
+    "on_screen": "The client asked me to replace text that was already sharp",
+    "evidence": {
+      "spoken": ["My faster export preset cut rendering time in half on this project.", "The client reviewed the blurry draft and asked me to replace text that was sharp in the source."],
+      "on_screen": ["The client reviewed the blurry draft and asked me to replace text that was sharp in the source."]
+    },
+    "spoken_question": "How did the faster export create revision work?",
+    "on_screen_question": "Why did correctly rendered source text look wrong to the client?",
+    "rationale": "The speech presents the time tradeoff. The title opens a question about the client's view of the draft."
+  },
+  {
+    "id": "calendar_space",
+    "technique": "reversal",
+    "subjects": "calendar meetings empty schedule focus productivity notifications time",
+    "body_excerpt": "I cleared three afternoons on my calendar for focused work. I still finished very little. I kept checking team notifications every few minutes. Muting them during one afternoon helped me finish the draft, and I realized my empty calendar had hidden how often I switched tasks.",
+    "spoken": "I cleared my calendar. My attention stayed booked.",
+    "on_screen": "The interruptions taking my afternoons never appeared as meetings on the calendar",
+    "evidence": {
+      "spoken": ["I cleared three afternoons on my calendar for focused work.", "I still finished very little.", "I kept checking team notifications every few minutes."],
+      "on_screen": ["I kept checking team notifications every few minutes.", "Muting them during one afternoon helped me finish the draft, and I realized my empty calendar had hidden how often I switched tasks."]
+    },
+    "spoken_question": "What kept consuming the creator's attention?",
+    "on_screen_question": "What activity was invisible in the calendar?",
+    "rationale": "The speech separates scheduled time from attention. The title asks what the calendar fails to record."
+  },
+  {
+    "id": "unused_subscription",
+    "technique": "concrete_cost",
+    "subjects": "subscription money monthly expense paid tool dashboard software habit",
+    "body_excerpt": "I paid thirty dollars a month for a dashboard I opened twice. I liked setting up its charts more than checking them. My decisions still came from a small weekly spreadsheet. The setup made me feel organized without changing what I looked at each Friday.",
+    "spoken": "Thirty dollars monthly. I opened that dashboard twice.",
+    "on_screen": "The tool I enjoyed configuring never became the place I made decisions",
+    "evidence": {
+      "spoken": ["I paid thirty dollars a month for a dashboard I opened twice."],
+      "on_screen": ["I liked setting up its charts more than checking them.", "My decisions still came from a small weekly spreadsheet."]
+    },
+    "spoken_question": "Why did the dashboard go unused?",
+    "on_screen_question": "Where did the actual decisions happen?",
+    "rationale": "The speech makes the unused expense concrete. The title asks where the creator's working habit actually lives."
+  },
+  {
+    "id": "battery_drain",
+    "technique": "named_unknown",
+    "subjects": "battery phone overnight drain background location app permission",
+    "body_excerpt": "My phone lost half its battery overnight for three nights. A weather app was requesting location updates in the background. I had given it continuous location access while testing a widget. Switching that permission to while using the app reduced the overnight drain on my phone.",
+    "spoken": "One permission kept my phone busy all night.",
+    "on_screen": "A widget experiment left a setting running for three nights afterward",
+    "evidence": {
+      "spoken": ["A weather app was requesting location updates in the background.", "I had given it continuous location access while testing a widget."],
+      "on_screen": ["My phone lost half its battery overnight for three nights.", "I had given it continuous location access while testing a widget."]
+    },
+    "spoken_question": "Which permission kept the app active?",
+    "on_screen_question": "What did the widget test leave behind?",
+    "rationale": "The speech names a narrow cause to investigate. The title connects it to an earlier experiment."
+  },
+  {
+    "id": "backup_assumption",
+    "technique": "confession",
+    "subjects": "backup sync cloud files restore deleted folder disk original footage",
+    "body_excerpt": "I told my teammate the footage was backed up. I had only checked that the sync icon was green. Deleting a test file on my laptop also deleted its cloud copy. We restored the file from version history and added a separate copy on a disconnected drive.",
+    "spoken": "I called it a backup before testing a restore.",
+    "on_screen": "The green icon confirmed something different from what I told my teammate",
+    "evidence": {
+      "spoken": ["I told my teammate the footage was backed up.", "I had only checked that the sync icon was green."],
+      "on_screen": ["I had only checked that the sync icon was green.", "Deleting a test file on my laptop also deleted its cloud copy."]
+    },
+    "spoken_question": "What did the restore test reveal?",
+    "on_screen_question": "What did the green icon actually confirm?",
+    "rationale": "The confession admits an unchecked assumption. The title opens a question about the misleading signal."
+  },
+  {
+    "id": "tab_reopening",
+    "technique": "behavior_callout",
+    "subjects": "browser tabs reopen research bookmarks reading save articles decision",
+    "body_excerpt": "I kept the same research tabs open for two weeks. Each tab stood for a decision I had postponed. Writing the decision beside each link let me close most of them. Two links mattered for the purchase I was making; the rest were interesting reading for another time.",
+    "spoken": "Still reopening those tabs? Name the decision behind each one.",
+    "on_screen": "Only two of my saved links belonged to the purchase I was making",
+    "evidence": {
+      "spoken": ["I kept the same research tabs open for two weeks.", "Each tab stood for a decision I had postponed.", "Writing the decision beside each link let me close most of them."],
+      "on_screen": ["Two links mattered for the purchase I was making; the rest were interesting reading for another time."]
+    },
+    "spoken_question": "How does naming a decision help close tabs?",
+    "on_screen_question": "What separated the useful links from the reading list?",
+    "rationale": "The speech recognizes a repeated behavior. The title asks how the creator judged which links mattered."
+  },
+  {
+    "id": "tests_speed",
+    "technique": "belief_inversion",
+    "subjects": "code tests slow fast software bug debugging refactor development test suite",
+    "body_excerpt": "I skipped writing tests to finish a small parser faster. I spent the next afternoon debugging a date format I had forgotten. A five-case test table exposed it immediately. Writing those cases also made me decide which date formats the parser should accept.",
+    "spoken": "Skipping tests cost me the afternoon I hoped to save.",
+    "on_screen": "Five examples forced a decision I had left out of the parser",
+    "evidence": {
+      "spoken": ["I skipped writing tests to finish a small parser faster.", "I spent the next afternoon debugging a date format I had forgotten."],
+      "on_screen": ["A five-case test table exposed it immediately.", "Writing those cases also made me decide which date formats the parser should accept."]
+    },
+    "spoken_question": "What bug consumed the saved time?",
+    "on_screen_question": "What specification decision did the examples reveal?",
+    "rationale": "The speech challenges a time-saving assumption. The title adds the specification benefit of concrete cases."
+  },
+  {
+    "id": "ten_slide_limit",
+    "technique": "constraint",
+    "subjects": "slides presentation limit pitch explanation audience ten story planning",
+    "body_excerpt": "The pitch slot allowed ten slides. I had twenty-eight. Combining slides exposed that I was explaining the same customer problem three times. I kept one customer story and used the extra time to explain the proposed price. The team asked more pricing questions in rehearsal.",
+    "spoken": "A ten-slide limit exposed my repeated explanation.",
+    "on_screen": "Cutting slides changed which questions the team asked me in rehearsal",
+    "evidence": {
+      "spoken": ["The pitch slot allowed ten slides.", "Combining slides exposed that I was explaining the same customer problem three times."],
+      "on_screen": ["I kept one customer story and used the extra time to explain the proposed price.", "The team asked more pricing questions in rehearsal."]
+    },
+    "spoken_question": "What explanation was repeated?",
+    "on_screen_question": "Which questions did the shorter presentation invite?",
+    "rationale": "The constraint reveals repetition. The title points toward a change in audience attention."
+  },
+  {
+    "id": "two_demos",
+    "technique": "comparison",
+    "subjects": "demo product polished rough prototype user feedback walkthrough interface",
+    "body_excerpt": "I showed three colleagues a polished animation and a rough clickable demo of the same workflow. The rough demo produced more specific feedback in those sessions. People tried to undo their own actions in it. That exposed a missing recovery step that the animation never showed.",
+    "spoken": "My rough demo got more specific feedback in these sessions.",
+    "on_screen": "The missing step appeared when people tried to reverse their own actions",
+    "evidence": {
+      "spoken": ["I showed three colleagues a polished animation and a rough clickable demo of the same workflow.", "The rough demo produced more specific feedback in those sessions."],
+      "on_screen": ["People tried to undo their own actions in it.", "That exposed a missing recovery step that the animation never showed."]
+    },
+    "spoken_question": "Why did the rough demo produce more specific feedback?",
+    "on_screen_question": "Which recovery step was missing?",
+    "rationale": "The comparison stays bounded to the observed sessions. The title asks about a particular user action."
+  },
+  {
+    "id": "notification_exception",
+    "technique": "exception",
+    "subjects": "notifications alerts silence mute phone interruptions family calendar",
+    "body_excerpt": "I muted most phone notifications during editing sessions. Calendar alerts stayed on. Twice I had worked straight through the time I needed to leave for a recording. The alert that helped was the travel-time reminder, rather than the one at the meeting's start.",
+    "spoken": "I muted notifications. One reminder earned its interruption.",
+    "on_screen": "An alert at the meeting's start was already too late for me",
+    "evidence": {
+      "spoken": ["I muted most phone notifications during editing sessions.", "Calendar alerts stayed on."],
+      "on_screen": ["Twice I had worked straight through the time I needed to leave for a recording.", "The alert that helped was the travel-time reminder, rather than the one at the meeting's start."]
+    },
+    "spoken_question": "Which reminder deserved the interruption?",
+    "on_screen_question": "Why was the ordinary alert too late?",
+    "rationale": "The speech asks why an exception earns its place. The title introduces the timing consequence."
+  },
+  {
+    "id": "shared_folder",
+    "technique": "hidden_tradeoff",
+    "subjects": "shared folder files client documents permissions share upload workspace private",
+    "body_excerpt": "I put all client files in one shared folder to simplify uploads. While preparing a delivery, I nearly included another client's draft. The identical filenames hid which project each draft belonged to. Separate project folders made that distinction visible before I selected files.",
+    "spoken": "My simpler folder setup nearly mixed two clients' drafts.",
+    "on_screen": "The filenames hid the distinction I needed most when preparing delivery",
+    "evidence": {
+      "spoken": ["I put all client files in one shared folder to simplify uploads.", "While preparing a delivery, I nearly included another client's draft."],
+      "on_screen": ["The identical filenames hid which project each draft belonged to."]
+    },
+    "spoken_question": "How did the simpler setup mix the drafts?",
+    "on_screen_question": "Which project distinction did the filenames hide?",
+    "rationale": "The speech names the near-miss caused by a convenience. The title asks about the detail that hid it."
+  }
+]

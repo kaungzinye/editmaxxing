@@ -307,7 +307,7 @@ def test_audio_analysis_waits_for_video_and_resumes_same_job(lab, tmp_path, monk
     source(c, pid, content=payload)
     c.post(f"/api/v1/projects/{pid}/sources/body/fixture")
     count = {"analysis": 0, "review": 0}
-    original = FixtureProvider.analyze
+    original = FixtureProvider.analyze_body
     original_review = FixtureProvider.review_boundaries
 
     def analyze(self, *args, **kwargs):
@@ -322,7 +322,7 @@ def test_audio_analysis_waits_for_video_and_resumes_same_job(lab, tmp_path, monk
             decision.timestamp_ms = boundary["min_ms"]
         return result
 
-    monkeypatch.setattr(FixtureProvider, "analyze", analyze)
+    monkeypatch.setattr(FixtureProvider, "analyze_body", analyze)
     monkeypatch.setattr(FixtureProvider, "review_boundaries", review)
     jid = audio(c, pid, "body", tmp_path)
     app.state.worker.run_once()

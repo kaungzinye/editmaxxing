@@ -109,7 +109,7 @@ function Capture({ title, subtitle, line, movement, initialClip, confirmLabel, o
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], allowsEditing: false });
       if (!result.canceled && mounted.current) {
         const asset = result.assets[0];
-        setClip({ id: `upload-${Date.now()}`, uri: asset.uri, duration: (asset.duration ?? 0) / 1000, demo: false, name: asset.fileName || 'Uploaded video' });
+        setClip({ id: `upload-${Date.now()}`, uri: asset.uri, duration: (asset.duration ?? 0) / (Platform.OS === 'web' ? 1 : 1000), demo: false, name: asset.fileName || 'Uploaded video' });
       }
     } catch { if (mounted.current) setError('Could not open this video. Try another file.'); }
   }

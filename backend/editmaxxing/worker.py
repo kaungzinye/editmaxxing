@@ -12,8 +12,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .models import HookScript, Template, Timing, Word
-from .provider import PROMPT_VERSION, get_provider
+from .hook_policy import policy_version
+from .models import BodyEditorial, HookScript, Template, Timing, Word
+from .provider import PROMPT_VERSION, complete_editorial, get_provider
 from .service import Problem
 from .store import uid
 
@@ -343,6 +344,9 @@ class Worker:
             source["words"] = [w.model_dump() for w in words]
         words = [Word(**w) for w in source["words"]]
         p = self.project(job)
+        reserved_duration_ms = sum(
+            c["source_end_ms"] - c["source_start_ms"] for c in base_plan["clips"] if c["role"] == "hook"
+        )
         key = hashlib.sha256(
             json.dumps(
                 [
@@ -352,6 +356,10 @@ class Worker:
                     p["templates"],
                     self.service.settings.editor_model,
                     PROMPT_VERSION,
+                    policy_version() if source["role"] == "body" else None,
+                    base_plan["target_duration_ms"] if source["role"] == "body" else None,
+                    base_plan["dead_space"] if source["role"] == "body" else None,
+                    reserved_duration_ms if source["role"] == "body" else None,
                     120000,
                     source["role"],
                     source["hook_scripts"],
@@ -458,10 +466,42 @@ class Worker:
                 "fixture": source.get("fixture", False),
             }
         templates = [Template(**x) for x in p["templates"]]
-        if stored:
+        if stored and "editorial" in stored:
             editorial = stored["editorial"]
         else:
-            decision = provider.analyze(words, templates, 120000)
+            if stored and "body" in stored:
+                body = BodyEditorial.model_validate(stored["body"])
+            else:
+                body = provider.analyze_body(words, 120000)
+                self.cache_editorial(
+                    job,
+                    key,
+                    {
+                        "source_id": sid,
+                        "version": PROMPT_VERSION,
+                        "body": body.model_dump(),
+                        "fixture": source.get("fixture", False),
+                    },
+                )
+            self.checkpoint(job, "generate_hooks", 0.55)
+            candidate_plan = compile_draft(
+                source["words"],
+                body,
+                p["sources"],
+                base_plan["target_duration_ms"],
+                base_plan["dead_space"]["enabled"],
+                {sid: source.get("metrics", {}).get("silences", [])},
+                reserved_duration_ms=reserved_duration_ms,
+            )
+            retained_word_ids = {
+                w.id
+                for w in words
+                for c in candidate_plan["clips"]
+                if c["role"] == "body"
+                and c["source_id"] == w.source_id
+                and c["source_start_ms"] <= w.start_ms < w.end_ms <= c["source_end_ms"]
+            }
+            decision = complete_editorial(provider, body, words, templates, retained_word_ids)
             editorial = decision.model_dump()
             for take in editorial["takes"]:
                 take["id"] = f"t_{hashlib.sha256((sid + take['id']).encode()).hexdigest()[:20]}"
@@ -485,9 +525,7 @@ class Worker:
             base_plan["target_duration_ms"],
             base_plan["dead_space"]["enabled"],
             {sid: source.get("metrics", {}).get("silences", [])},
-            reserved_duration_ms=sum(
-                c["source_end_ms"] - c["source_start_ms"] for c in base_plan["clips"] if c["role"] == "hook"
-            ),
+            reserved_duration_ms=reserved_duration_ms,
         )
         draft["clips"] = self.review_cuts(job, source, draft["clips"])
         for field in ("caption_edits", "caption_style", "audio", "hook_overlay"):

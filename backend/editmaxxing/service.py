@@ -443,8 +443,8 @@ class Service:
                 if hook:
                     check_capture(p, hook)
                 if combination.id in checked and checked[combination.id] != (
-                    hook["text_revision"],
-                    title["text_revision"],
+                    hook["text_revision"] if hook else None,
+                    title["text_revision"] if title else None,
                 ):
                     raise Problem(
                         "revision_conflict",

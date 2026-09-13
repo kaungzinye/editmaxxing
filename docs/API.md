@@ -61,6 +61,12 @@ The synthetic fixture contains clip and caption data. Integration supplies the c
 
 ## Editor and hook workflow details
 
+Body analysis chooses two IDs from a catalogue of 20 worked examples. A separate hook-writing
+request receives those examples and the transcript words retained by the initial body selection.
+The `generate_hooks` job stage follows body analysis. Recommendation metadata includes `example_ids`
+and `policy_version`. The backend stores body decisions before generation so retries reuse them.
+See [HOOK-GENERATION.md](HOOK-GENERATION.md) for the library and evaluation workflow.
+
 Transcript analysis publishes independent grounded recommendations while body video uploads. Record selected spoken hooks separately, each with one script. Matching appends reviewed candidates. Select a retake explicitly through the hook update route.
 
 Templates accept exactly four records before recommendations publish. With an empty template list, the provider generates independent grounded titles. Persist title edits through `PUT /projects/{id}/titles/{title_id}` with `text` and `base_revision`. Original rationale and evidence remain associated with their generated revision.
@@ -74,6 +80,13 @@ Starting scripts and teleprompter preferences are editable app state. Hook recor
 Hook ingestion attaches recorded takes to the project's hook candidates and preserves the current saved body clip list. Keep body editing available during hook preparation. Applying a hook selection uses the plan revision check. Each render request accepts any nonempty subset of valid spoken-hook/title combinations, with unique combination IDs. Produce one MP4 per selection and associate every output with its combination and captured body revision.
 
 ## Hook placement
+
+Generated recommendations include `evidence_spans`, `payoff_word_ids` and `question_opened`.
+Each evidence span is consecutive within the source; a recommendation can cite several spans.
+The flat `evidence_word_ids` list exposes their combined evidence. Exports require generated
+payoff passages to survive intact in timeline order, returning `422 payoff_missing` when an
+answer is cut. Semantic assessment receives retained body words, including for spoken-only
+openings and creator overlays. Its cache includes the body clips and policy version.
 
 Each assembled combination orders the selected recorded hook clips first, starting at timeline zero, followed by the saved body clips. Source recording order is independent of playback order. Selecting another hook replaces the leading hook clips and preserves body clip order and source ranges. Recompute body and caption timeline offsets from the selected hook duration. Anchor the visual hook title to timeline zero. Apply the same assembly rule to phone preview, draft render, and each exported combination.
 

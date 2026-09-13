@@ -248,7 +248,9 @@ class RecommendationChoice(Model):
     proposed_text: str
     mechanism: str
     rationale: str
-    evidence_word_ids: list[Id]
+    evidence_spans: list[list[Id]] = Field(min_length=1)
+    payoff_word_ids: list[Id]
+    question_opened: str
 
 
 class HookChoice(RecommendationChoice):
@@ -259,11 +261,21 @@ class OnScreenChoice(RecommendationChoice):
     template: TitleChoice | None
 
 
-class Editorial(Model):
+class BodyEditorial(Model):
     takes: list[EditorialTake]
+    example_ids: list[Id] = Field(min_length=2, max_length=2)
+
+
+class HookRecommendations(Model):
     hooks: list[HookChoice] = Field(max_length=4)
     titles: list[OnScreenChoice] = Field(max_length=4)
     short_set_reason: str
+
+
+class Editorial(HookRecommendations):
+    takes: list[EditorialTake]
+    example_ids: list[Id] = Field(default_factory=list, max_length=2)
+    hook_policy_version: str = ""
 
 
 class PairAssessment(Model):

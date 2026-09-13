@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 
+from .hook_policy import MAX_SPOKEN_DURATION_MS, MAX_SPOKEN_WORDS, policy_version
 from .provider import get_provider
 from .service import Problem
 
@@ -28,7 +29,12 @@ def publish(project, source_id, editorial):
                 "rationale_revision": 1,
                 "mechanism": choice["mechanism"],
                 "rationale": choice["rationale"],
-                "evidence_word_ids": choice["evidence_word_ids"],
+                "evidence_word_ids": list(
+                    dict.fromkeys(w for span in choice["evidence_spans"] for w in span)
+                ),
+                "evidence_spans": choice["evidence_spans"],
+                "payoff_word_ids": choice["payoff_word_ids"],
+                "question_opened": choice["question_opened"],
                 "validation": "supported",
             }
             if kind == "hooks":
@@ -49,7 +55,12 @@ def publish(project, source_id, editorial):
                     slots={s["name"]: s["value"] for s in (choice.get("template") or {}).get("slots", [])},
                 )
             project[kind].append(record)
-    project["recommendations"] = {"status": "ready", "short_set_reason": editorial["short_set_reason"]}
+    project["recommendations"] = {
+        "status": "ready",
+        "short_set_reason": editorial["short_set_reason"],
+        "example_ids": editorial["example_ids"],
+        "policy_version": editorial["hook_policy_version"],
+    }
 
 
 def check_capture(project, hook, candidate=None):
@@ -60,7 +71,10 @@ def check_capture(project, hook, candidate=None):
         )
     take = project["takes"][candidate["take_id"]]
     words = [w for w in project["words"] if w["id"] in take["word_ids"]]
-    if words and max(w["end_ms"] for w in words) - min(w["start_ms"] for w in words) >= 3000:
+    if (
+        words
+        and max(w["end_ms"] for w in words) - min(w["start_ms"] for w in words) >= MAX_SPOKEN_DURATION_MS
+    ):
         raise Problem("hook_too_long", "Record the spoken hook in under three seconds.", 409)
     source = project["sources"][candidate["source_id"]]
     script = next(s for s in source["hook_scripts"] if s["hook_id"] == hook["id"])
@@ -86,8 +100,10 @@ def update_hook(service, pid, token, hook_id, request):
         capture_changed = False
         if request.proposed_text is not None:
             text = request.proposed_text.strip()
-            if not text or len(text.split()) >= 12:
+            if not text or len(text.split()) > MAX_SPOKEN_WORDS:
                 raise Problem("invalid_hook", "Spoken hooks require one to eleven words.")
+            if "!" in text:
+                raise Problem("invalid_hook", "Use plain punctuation in hook text.")
             if text != hook["proposed_text"]:
                 hook.update(proposed_text=text, text_revision=hook["text_revision"] + 1, validation="pending")
                 capture_changed = True
@@ -123,6 +139,8 @@ def update_title(service, pid, token, title_id, request):
         text = request.text.strip()
         if not text:
             raise Problem("invalid_title", "Title text requires visible characters.")
+        if "!" in text:
+            raise Problem("invalid_title", "Use plain punctuation in hook text.")
         if text != title["text"]:
             title.update(text=text, text_revision=title["text_revision"] + 1, validation="pending")
         service.store.save(db, pid, p)
@@ -131,28 +149,58 @@ def update_title(service, pid, token, title_id, request):
 
 def assess_pairs(service, pid, token, request):
     """Assess immutable request inputs outside the project write transaction."""
+    from .editing import EditError, combination_overlay
+
     with service.store.tx() as db:
         project = copy.deepcopy(service.require(db, pid, token))
         service.check_revision(project, request.plan_revision)
+    body_clips = [c for c in project["plan"]["clips"] if c["role"] == "body"]
+    retained_words = [
+        w
+        for c in body_clips
+        for w in project["words"]
+        if w["source_id"] == c["source_id"]
+        and c["source_start_ms"] <= w["start_ms"] < w["end_ms"] <= c["source_end_ms"]
+    ]
+    retained_ids = [w["id"] for w in retained_words]
     checked = {}
     for combination in request.combinations:
         hook = next((h for h in project["hooks"] if h["id"] == combination.hook_id), None)
         title = next((t for t in project["titles"] if t["id"] == combination.visual_title_id), None)
-        if not hook or not title or not combination.use_title:
+        if combination.hook_id and (not hook or not hook.get("take_id")):
             continue
-        effective_title = title["text"]
-        if (
-            project["plan"]["selected_hook_id"] == hook["id"]
-            and project["plan"]["selected_visual_title_id"] == title["id"]
-            and project["plan"]["hook_overlay"] is not None
-        ):
-            effective_title = project["plan"]["hook_overlay"]["text"]
+        try:
+            overlay = combination_overlay(project["plan"], title, combination.model_dump())
+        except EditError as error:
+            raise Problem("title_incomplete", str(error)) from None
+        spoken = hook["proposed_text"] if hook else ""
+        effective_title = overlay["text"] if overlay else ""
+        if not spoken and not effective_title:
+            continue
+        if "!" in spoken + effective_title:
+            raise Problem("invalid_pair", "Use plain punctuation in opening text.")
+        for record, text in ((hook, spoken), (title, effective_title)):
+            if record and text and text == record["generated_text"]:
+                payoff = record.get("payoff_word_ids", [])
+                if payoff and not any(
+                    retained_ids[i : i + len(payoff)] == payoff
+                    for i in range(len(retained_ids) - len(payoff) + 1)
+                ):
+                    raise Problem(
+                        "payoff_missing", "The body edit must retain the answer promised by this hook.", 422
+                    )
+        evidence = set((hook or {}).get("evidence_word_ids", []))
+        if effective_title:
+            evidence.update((title or {}).get("evidence_word_ids", []))
         context = {
-            "spoken": hook["proposed_text"],
-            "title": combination.overlay.text if combination.overlay else effective_title,
-            "spoken_evidence": hook["evidence_word_ids"],
-            "title_evidence": title["evidence_word_ids"],
-            "words": [w for w in project["words"] if project["sources"][w["source_id"]]["role"] == "body"],
+            "policy_version": policy_version(),
+            "spoken": spoken,
+            "title": effective_title,
+            "spoken_question": (hook or {}).get("question_opened", ""),
+            "title_question": (title or {}).get("question_opened", "") if effective_title else "",
+            "original_evidence_words": [w for w in project["words"] if w["id"] in evidence],
+            "words": retained_words,
+            "body_clips": body_clips,
         }
         key = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         assessment = project["pair_assessments"].get(key)
@@ -161,7 +209,10 @@ def assess_pairs(service, pid, token, request):
             assessment = get_provider(service.settings, fixture=fixture).assess_pair(context).model_dump()
         if not assessment["supported"] or assessment["contradictory"] or assessment["repetitive"]:
             raise Problem("invalid_pair", f"{combination.id}: {assessment['reason']}")
-        checked[combination.id] = (hook["text_revision"], title["text_revision"])
+        checked[combination.id] = (
+            hook["text_revision"] if hook else None,
+            title["text_revision"] if title else None,
+        )
         with service.store.tx() as db:
             live = service.require(db, pid, token)
             live["pair_assessments"][key] = assessment

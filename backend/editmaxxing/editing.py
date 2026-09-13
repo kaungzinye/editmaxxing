@@ -454,6 +454,28 @@ def compile_draft(
     return canonicalize_plan(plan, words, sources, take_index)
 
 
+def combination_overlay(plan: dict, visual_title: dict | None, combination: dict) -> dict | None:
+    """Resolve the title used by both opening validation and rendering."""
+    if not combination.get("use_title", True):
+        return None
+    if combination.get("overlay") is not None:
+        return deepcopy(combination["overlay"])
+    if plan.get("selected_hook_id") == combination.get("hook_id") and plan.get(
+        "selected_visual_title_id"
+    ) == combination.get("visual_title_id"):
+        return deepcopy(plan.get("hook_overlay"))
+    if visual_title is not None:
+        if visual_title.get("missing_slots"):
+            raise EditError("Fill the visual title's missing slots or provide a manual title.")
+        return {
+            "text": visual_title["text"],
+            "position": {"x": 0.44, "y": 0.24},
+            "hold_ms": 4000,
+            "fade_ms": 300,
+        }
+    return None
+
+
 def assemble_combination(
     plan: dict,
     hook: dict | None,
@@ -494,26 +516,7 @@ def assemble_combination(
             raise EditError("The selected hook needs available clip ranges.")
     if title_id is not None and (visual_title is None or visual_title.get("id") != title_id):
         raise EditError("The visual title must match the project selection.")
-    use_title = combination.get("use_title", True)
-    if not use_title:
-        overlay = None
-    elif combination.get("overlay") is not None:
-        overlay = deepcopy(combination["overlay"])
-    elif (
-        assembled.get("selected_hook_id") == hook_id and assembled.get("selected_visual_title_id") == title_id
-    ):
-        overlay = assembled.get("hook_overlay")
-    elif visual_title is not None:
-        if visual_title.get("missing_slots"):
-            raise EditError("Fill the visual title's missing slots or provide a manual title.")
-        overlay = {
-            "text": visual_title["text"],
-            "position": {"x": 0.44, "y": 0.24},
-            "hold_ms": 4000,
-            "fade_ms": 300,
-        }
-    else:
-        overlay = None
+    overlay = combination_overlay(assembled, visual_title, combination)
     assembled.update(
         clips=hook_clips + body,
         selected_hook_id=hook_id,

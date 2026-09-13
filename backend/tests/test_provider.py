@@ -5,7 +5,17 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from editmaxxing.config import Settings
-from editmaxxing.models import Editorial, HookScript, Match, Matches, SlotValue, Template, Timing, TitleChoice
+from editmaxxing.models import (
+    BodyEditorial,
+    HookRecommendations,
+    HookScript,
+    Match,
+    Matches,
+    SlotValue,
+    Template,
+    Timing,
+    TitleChoice,
+)
 from editmaxxing.provider import (
     FixtureProvider,
     OpenAIProvider,
@@ -199,14 +209,27 @@ def test_requested_editor_model_is_exact():
 
 def test_structured_response_preserves_model_schema_and_local_validation(words, templates, editorial):
     client = Mock()
-    client.responses.parse.return_value = SimpleNamespace(status="completed", output_parsed=editorial)
+    client.responses.parse.side_effect = [
+        SimpleNamespace(
+            status="completed",
+            output_parsed=BodyEditorial(takes=editorial.takes, example_ids=editorial.example_ids),
+        ),
+        SimpleNamespace(
+            status="completed",
+            output_parsed=HookRecommendations(
+                hooks=editorial.hooks, titles=editorial.titles, short_set_reason=editorial.short_set_reason
+            ),
+        ),
+    ]
     result = OpenAIProvider(Settings(), client=client).analyze(words, templates)
     assert result == editorial
     options = client.responses.parse.call_args.kwargs
     assert options["model"] == "gpt-6-astra"
-    assert options["text_format"] is Editorial
+    assert client.responses.parse.call_args_list[0].kwargs["text_format"] is BodyEditorial
+    assert options["text_format"] is HookRecommendations
     assert options["store"] is False
     assert options["reasoning"] == {"effort": "low"}
+    client.responses.parse.side_effect = None
     client.responses.parse.return_value = SimpleNamespace(status="incomplete", output_parsed=None)
     with pytest.raises(ProviderError, match="incomplete"):
         OpenAIProvider(Settings(), client=client).analyze(words, templates)

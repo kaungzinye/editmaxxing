@@ -32,6 +32,7 @@ export interface Word {
 export interface Recommendation {
   generated_text: string; text_revision: number; rationale_revision: number;
   mechanism: string; rationale: string; evidence_word_ids: string[]; validation: "pending" | "supported";
+  evidence_spans?: string[][]; payoff_word_ids?: string[]; question_opened?: string;
 }
 export interface VisualHookTitle extends Recommendation {
   id: string;
@@ -216,7 +217,7 @@ export interface ProjectState {
   takes: Record<string, Take>;
   hooks: SpokenHook[];
   titles: VisualHookTitle[];
-  recommendations: { status: "pending" | "ready"; short_set_reason: string };
+  recommendations: { status: "pending" | "ready"; short_set_reason: string; example_ids?: string[]; policy_version?: string };
   proposals: Proposal[];
   feedback: DeliveryFeedback[];
   outputs: RenderOutput[];

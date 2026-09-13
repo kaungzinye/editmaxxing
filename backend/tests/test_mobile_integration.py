@@ -56,6 +56,8 @@ def test_recommendations_publish_before_video_and_preserve_creator_edits(lab, tm
     p = c.get(f"/api/v1/projects/{pid}").json()
     assert c.get(f"/api/v1/jobs/{jid}").json()["stage"] == "waiting_video"
     assert p["recommendations"]["status"] == "ready"
+    assert len(p["recommendations"]["example_ids"]) == 2
+    assert p["recommendations"]["policy_version"].startswith("hooks-v1-")
     assert len(p["hooks"]) == len(p["titles"]) == 4
     assert p["plan"]["clips"] == []
     h, t = p["hooks"][0], p["titles"][0]
@@ -212,6 +214,112 @@ def test_pair_semantics_and_concurrent_revision_change(lab, tmp_path, monkeypatc
     assert c.post(f"/api/v1/projects/{pid}/renders", json=request).status_code == 409
 
 
+@pytest.mark.parametrize("with_title", [True, False])
+def test_render_requires_the_promised_answer_in_the_retained_body(lab, tmp_path, with_title):
+    c, app, pid = lab
+    p = fixture_analyzed(lab, tmp_path)
+    p = hook_source(lab, tmp_path, p["hooks"][0], "hooks")
+    body = [clip for clip in p["plan"]["clips"] if clip["role"] == "body"]
+    last = body[-1]
+    payoff = [
+        w["id"]
+        for w in p["words"]
+        if w["source_id"] == last["source_id"]
+        and last["source_start_ms"] <= w["start_ms"] < w["end_ms"] <= last["source_end_ms"]
+    ]
+    assert payoff
+    with app.state.service.store.tx() as db:
+        live = app.state.service.require(db, pid)
+        live["hooks"][0]["payoff_word_ids"] = payoff
+        live["hooks"][0]["question_opened"] = "What does the final passage explain?"
+        app.state.service.store.save(db, pid, live)
+    request = request_for(p)
+    request["combinations"][0]["use_title"] = with_title
+    response = c.post(f"/api/v1/projects/{pid}/renders", json=request)
+    assert response.status_code == 202, response.text
+    plan = copy.deepcopy(p["plan"])
+    plan["clips"] = [clip for clip in plan["clips"] if clip["id"] != last["id"]]
+    saved = c.put(f"/api/v1/projects/{pid}/plan", json={"base_revision": plan["revision"], "plan": plan})
+    assert saved.status_code == 200, saved.text
+    request.update(request_id="after_cut", plan_revision=saved.json()["revision"])
+    response = c.post(f"/api/v1/projects/{pid}/renders", json=request)
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["code"] == "payoff_missing"
+
+
+def test_pair_cache_tracks_body_edits_policy_and_creator_overlays(lab, tmp_path, monkeypatch):
+    c, _app, pid = lab
+    p = fixture_analyzed(lab, tmp_path)
+    p = hook_source(lab, tmp_path, p["hooks"][0], "hooks")
+    calls = []
+    original = FixtureProvider.assess_pair
+
+    def assess(self, context):
+        calls.append(copy.deepcopy(context))
+        return original(self, context)
+
+    monkeypatch.setattr(FixtureProvider, "assess_pair", assess)
+    request = request_for(p)
+    request["combinations"][0].update(
+        visual_title_id=None,
+        overlay={"text": "A creator opening", "hold_ms": 4000},
+    )
+    for rid in ("first", "same_inputs"):
+        request["request_id"] = rid
+        response = c.post(f"/api/v1/projects/{pid}/renders", json=request)
+        assert response.status_code == 202, response.text
+    assert len(calls) == 1
+    assert calls[0]["title"] == "A creator opening"
+    assert all(w["source_id"] == "body" for w in calls[0]["words"])
+    plan = copy.deepcopy(p["plan"])
+    dropped = plan["clips"].pop()
+    saved = c.put(f"/api/v1/projects/{pid}/plan", json={"base_revision": plan["revision"], "plan": plan})
+    assert saved.status_code == 200, saved.text
+    request.update(request_id="body_edit", plan_revision=saved.json()["revision"])
+    response = c.post(f"/api/v1/projects/{pid}/renders", json=request)
+    assert response.status_code == 202, response.text
+    assert len(calls) == 2
+    assert dropped not in calls[1]["body_clips"]
+    assert len(calls[1]["words"]) < len(calls[0]["words"])
+    monkeypatch.setattr("editmaxxing.recommendations.policy_version", lambda: "evaluation-policy")
+    request["request_id"] = "policy_change"
+    response = c.post(f"/api/v1/projects/{pid}/renders", json=request)
+    assert response.status_code == 202, response.text
+    assert len(calls) == 3
+
+
+def test_hook_generation_retry_reuses_body_analysis(lab, tmp_path, monkeypatch):
+    c, app, pid = lab
+    source(c, pid)
+    c.post(f"/api/v1/projects/{pid}/sources/body/fixture")
+    body_calls = []
+    generate_calls = []
+    original_body = FixtureProvider.analyze_body
+    original_generate = FixtureProvider.generate_hooks
+
+    def body(self, *args):
+        body_calls.append(True)
+        return original_body(self, *args)
+
+    def generate(self, *args):
+        generate_calls.append(True)
+        if len(generate_calls) == 1:
+            raise ProviderError("provider_unavailable", "Retry hook generation.", retryable=True)
+        return original_generate(self, *args)
+
+    monkeypatch.setattr(FixtureProvider, "analyze_body", body)
+    monkeypatch.setattr(FixtureProvider, "generate_hooks", generate)
+    jid = audio(c, pid, "body", tmp_path)
+    app.state.worker.run_once()
+    assert c.get(f"/api/v1/jobs/{jid}").json()["state"] == "failed"
+    retry = c.post(f"/api/v1/jobs/{jid}/retry")
+    assert retry.status_code == 202
+    app.state.worker.run_once()
+    p = c.get(f"/api/v1/projects/{pid}").json()
+    assert p["recommendations"]["status"] == "ready"
+    assert len(body_calls) == 1 and len(generate_calls) == 2
+
+
 def test_short_sets_and_evidence_validation():
     words = fixture_words("body")
     editorial = FixtureProvider().analyze(words, [])
@@ -227,7 +335,7 @@ def test_short_sets_and_evidence_validation():
     limited.short_set_reason = ""
     with pytest.raises(ProviderError, match="reason"):
         validate_editorial(limited, words, [])
-    editorial.hooks[0].evidence_word_ids = ["foreign"]
+    editorial.hooks[0].evidence_spans = [["foreign"]]
     with pytest.raises(ProviderError, match="unavailable"):
         validate_editorial(editorial, words, [])
 
