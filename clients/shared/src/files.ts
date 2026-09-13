@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File, FileMode, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { fileChecksum, type ByteSource } from './api';
@@ -14,7 +14,15 @@ export function readFile(file: LocalFile): ByteSource {
   }
   const native = new File(file.uri);
   if (!native.exists) throw new Error(`Saved file is missing: ${file.name}`);
-  return { size: native.size, read: async (start, end) => new Uint8Array(await native.slice(start, end).arrayBuffer()) };
+  return { size: native.size, read: async (start, end) => {
+    const handle = native.open(FileMode.ReadOnly);
+    try {
+      handle.offset = start;
+      const bytes = handle.readBytes(end - start);
+      if (bytes.length !== end - start) throw new Error(`Saved file is incomplete: ${file.name}`);
+      return bytes;
+    } finally { handle.close(); }
+  } };
 }
 export async function pickFile(kind: 'audio' | 'original', progress: (v: number) => void): Promise<LocalFile | null> {
   const selected = await DocumentPicker.getDocumentAsync({ type: kind === 'audio' ? 'audio/*' : 'video/*', copyToCacheDirectory: true });
