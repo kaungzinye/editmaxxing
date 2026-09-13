@@ -97,5 +97,9 @@
       "emphasis_word_id": "w7"
     }
   ],
-  "selected_visual_title_id": "hook_1_title_1"
+  "selected_visual_title_id": "hook_1_title_1",
+  "audio": {
+    "normalization_enabled": true,
+    "preset": "speech_consistent"
+  }
 }

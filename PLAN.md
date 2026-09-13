@@ -34,21 +34,76 @@ Keep the first implementation focused on readable text near the camera, adjustab
 
 ## Upload and normalization
 
-Prioritize one continuous body recording containing multiple lines and retakes. The initial recording supports up to 20 minutes of footage. Demo capture uses portrait 1080p at 30 fps. Set a separate byte limit from a representative phone file. The project also accepts one additional continuous recording of the four suggested hooks. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
+Prioritize one continuous body recording containing multiple lines and retakes. The initial recording supports up to 20 minutes of footage. Demo capture uses portrait 1080p at 30 fps. Set a separate byte limit from a representative phone file. The project also accepts one additional continuous recording of the four suggested hooks. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. Assign source IDs and a canonical media time origin before extraction. Preserve explicit timestamp mappings between captured video, extracted audio, and the server editing source. All transcript and clip ranges use canonical source time.
 
 Use a 1080x1920 output canvas at 30 fps, center-cropping to fill. Show the same crop in preview. Provider keys live in backend environment variables. Use opaque project access tokens and signed media URLs for the public demo. Set a storage quota and configurable project retention.
+
+## Original footage and recovery
+
+Each project has an Originals library and an Edits view. Original recordings live in durable private app storage. Edits contain source references, clip ranges, captions, and effects. AI operations, timeline trims, and removal of clips change edit instructions while originals remain available. Save original to Photos is an explicit optional action. Final exports retain the save-to-Photos flow.
+
+Immediately after recording stops, finalize the video, place it in durable app storage, and persist its source ID and project record before starting analysis. Save edit revisions locally as the creator works and synchronize them separately from media uploads. On app launch, reconcile finalized recording files, project records, and upload state so an interrupted save can recover completed footage. Keep originals through app restarts, offline sessions, failed uploads, and analysis failures.
+
+Present recording storage status with plain language:
+
+- Saved on this phone: the finalized original and project record are stored locally.
+- Backing up, with percentage: a resumable upload is storing the full original under the durable backup policy.
+- Backed up: the server has verified the full original and the project has a supported restore route and retention policy.
+- Uploaded for processing, with expiry: the server holds a temporary working copy. The local original remains the recovery copy.
+
+Audio and transcript readiness are separate from original-video protection. A backup requires a verified full-resolution original, its metadata, and a recoverable project record. Keep the captured original alongside server-generated editing media. Verify upload size and checksum before marking it complete. Resume interrupted uploads from acknowledged parts. Schedule background transfer where the mobile platform permits it, persist the queue, and resume on foreground launch. Show paused or failed transfer status truthfully.
+
+For the hackathon, prioritize durable local originals, saved-project recovery, verified resumable transfers, and explicit deletion. The 24-hour server policy covers temporary processing files and is labeled with its expiry. Durable cloud backup requires separate retention and authenticated project recovery, such as account-linked restore after reinstall. Enable the Backed up label and device-space cleanup only when those capabilities exist and pass a restore check. Show the retained-until date for any time-limited remote copy. Before relying solely on remote storage, provide a clear retention commitment and expiry handling.
+
+During active recording, investigate finalized recording segments as recovery checkpoints. Present segments as one continuous take with a common logical source timeline and tested timestamp mapping. Validate seamless video and audio joins. Device tests cover app termination, calls, camera interruption, low storage, and restarting after a crash. The recovery guarantee covers completed recordings and individually finalized checkpoints. Expose checkpoint recovery only after the recording implementation passes those tests. Display a saving state until the current recording is finalized.
+
+Deletion actions have distinct meanings:
+
+- Remove from edit changes the selected timeline and retains the original.
+- Delete original recording lists affected edits and asks for explicit confirmation before removing source copies.
+- Free device space is available after verified durable backup and restore access. It removes the local media copy, retains project metadata, and permits download on demand.
+- Delete project clearly states which local files, remote originals, and edits it removes. Coordinate cancellation with uploads and analysis so completing jobs respect the deletion record.
+
+Private app storage can be lost with device loss or app removal. Explain that limitation beside local-only status and offer optional Save original to Photos or durable backup when available. Routine cache cleanup removes reproducible previews and temporary files. Original deletion follows the explicit actions above.
 
 ## Cut construction
 
 1. Use Whisper for the timestamped transcript. Apply deterministic timestamp and silence rules for mechanical cleanup, with an ffmpeg silence map and RMS envelope. Astra handles semantic cleanup and editorial choices.
 2. Astra groups intended lines and takes. Repeated opening phrases can indicate retakes during continuous speech.
-3. Sample candidate frames at one per second, with a per-request cap. Astra scores eye contact and energy, selects a take with a gentle last-take preference, and explains the choice.
+3. Select takes from the transcript first. For visually ambiguous candidates, sample a small capped set of frames to assess eye contact and visible delivery. Additional frame analysis returns a reviewable proposal.
 4. Place boundaries in nearby silence with up to 150 ms padding, clamped to source bounds and neighboring speech.
 5. Split interior silence longer than 700 ms into visible clips, retaining 250 ms total around the split. Keep analysis so the dead-space toggle can reconstruct the plan.
 6. Rank body lines by necessity, preserve coherent order, and drop whole lines automatically to approach the target duration. Return one complete body cut and a restorable list of dropped lines.
 7. Associate four visual title variations with each spoken hook. Build captions from words within the chosen clip ranges.
 
-Changing target duration reuses transcription, take scores, silence data, and visual hook titles. Rerun line ranking and return a proposed plan. Applying a proposal is an explicit action when the timeline contains manual edits.
+Astra returns editorial choices referencing word and take IDs. Deterministic code turns those choices into validated clip ranges. The first analysis returns one body draft and four spoken hook suggestions together. Changing target duration reuses stored analysis and returns a revision-bound proposal for explicit application.
+
+## Responsive processing and edit ownership
+
+1. Save the recording locally with an immutable source ID and timestamp manifest.
+2. Extract compact audio, preserve its timing map, and prioritize its upload. Prototype extraction in the chosen Expo runtime before committing to the native capture implementation.
+3. Start transcription and initial editing from the audio. Upload full video in parallel as bandwidth allows.
+4. Open the first AI body draft against local phone video. The creator can edit and record hooks while video uploads. Show media-upload and analysis progress separately.
+5. Analyze additional hook audio independently, then attach available takes to hook candidates. Selecting a hook prepends it to the current body edit.
+6. Enable cloud draft and export once all source video required by the selected combinations is available and verified.
+
+Keep immutable source analysis, revision-bound AI proposals, the user-owned timeline, and immutable render snapshots as separate records. The initial draft initializes an empty timeline once. Subsequent model results require explicit application. When edits occur during analysis, show a review action for the proposal and validate its base revision on application. A stale proposal requires review against the current timeline. Preserve caption overrides and removed material throughout.
+
+Hook matching updates candidate records independently of body edits. A body change can make an existing hook suggestion less relevant, so offer an explicit refresh action while preserving recorded takes and edited suggestions. Capture hook takes, body revision, overlays, captions, and audio settings in each render snapshot.
+
+Transcribe each immutable recording once. Cache analysis using source identity, analysis configuration, and prompt version. Use a separate task for each required analysis stage, and reuse results across all combinations. Target changes rerun line ranking. Trims, reorders, caption chunking, duration calculations, and visual slot assembly run deterministically. Small optional frame checks enrich a reviewable proposal while editing remains available.
+
+## Audio normalization and delivery feedback
+
+Enable automatic loudness matching by default, with a creator toggle. Measure hook and body speech, apply bounded gain to reduce the level jump at the join, and normalize the assembled soundtrack with true-peak control. Use a consistent project preset across combinations. Measure cached source audio once and remeasure assembled output when its edit or audio settings change. Keep sample alignment and duration stable through processing. Validate the preset on demo footage.
+
+Use ffmpeg's documented [loudnorm filter](https://ffmpeg.org/ffmpeg-filters.html#loudnorm) for output loudness normalization. Device preview approximates per-section gain. The rendered draft includes the final audio treatment. Keep original audio available through the normalization toggle.
+
+After hook recording, compare each hook's delivery with the opening body passage and summarize the wider body for context. Measure speaking rate, pauses, level, and vocal dynamics from audio. Give Astra those measurements and transcript context, plus a small frame sample when available. Describe pace and visible delivery with supporting evidence. Account for recording-level and microphone differences when interpreting loudness. Present uncertain judgments as suggestions.
+
+Example feedback: "This hook is much faster than the opening body line. Try a calmer take for a smoother transition." Provide play-transition, keep-take, and record-again actions. Delivery feedback is advisory. A retake becomes a candidate that the creator can select. Changing the body opening makes the associated feedback stale and schedules a cached-metrics comparison against the current revision. Feedback carries the body revision and hook take ID it assesses.
+
+Loudness matching adjusts playback level. Delivery feedback addresses performance choices such as pace and emphasis. Treat these as separate controls. Render work depends on available source media and valid selections. Advisory feedback can finish while the creator continues editing or exporting.
 
 ## Timeline contract
 
@@ -74,8 +129,8 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 
 ## Ownership and checkpoints
 
-- Kaung: upload, storage, transcription, Astra analysis, cut construction, captions, render, then timeline integration.
-- Vanessa: Expo screens, camera and teleprompter, gestures, playback, projects, visual hook title UI, visual title templates, web deployment.
+- Kaung: resumable upload, storage verification, project recovery API, transcription, Astra analysis, cut construction, captions, render, then timeline integration.
+- Vanessa: Expo screens, durable local recording storage and recovery, camera and teleprompter, gestures, playback, projects, visual hook title UI, visual title templates, web deployment.
 - By 11:00: agree on the contract, verify model access, select the Expo SDK, and confirm Railway storage.
 - By 12:30: backend processes short footage, app edits fixture data, visual hook title selection is ready.
 - By 13:30: connect upload, job polling, plan save, and render. Deploy.
@@ -92,8 +147,18 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 - Any selected subset of the 16 combinations produces separate MP4 files using the saved body cut.
 - Selected combinations reuse the body cut. Manual title and caption edits, additions, and deletions survive save and render.
 - Trim and reorder survive reload and appear in the export.
+- Audio-first analysis opens a local-video draft while full video uploads. Cloud export waits for required media.
+- An AI job completing during manual edits leaves the saved timeline intact and exposes a revision-bound proposal.
+- Hook attachment preserves body edits and caption overrides.
+- Audio normalization preserves timing and reduces a measured hook/body level jump. Its toggle persists in render snapshots.
+- Delivery feedback identifies its hook take and body revision, supports keep or retake, and remains advisory.
 - Captions align after clips move, shrink, or repeat. Hook text begins at timeline zero.
 - Target changes expose dropped lines and actual duration.
+- Completed originals and saved edits survive app restart, offline use, failed analysis, and interrupted upload.
+- Editing and deleting timeline clips retain original files.
+- Original upload completion requires a matching size and checksum. Temporary processing copies display expiry.
+- Durable-backup status and Free device space require a verified restore path and explicit retention policy.
+- Active-recording interruption tests establish which finalized checkpoints can recover, with continuous audio/video timing verified.
 - Oversized, overlong, and unreadable uploads produce actionable errors. Interrupted jobs support retry.
 - Native export saves to Photos. Web export downloads a playable MP4.
 - The public judge flow includes a labeled sample project using permitted footage.

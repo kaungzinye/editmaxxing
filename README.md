@@ -12,3 +12,7 @@ This repository contains the product plan, API contract, shared TypeScript types
 Stack: Expo with Expo Router, FastAPI, ffmpeg, hosted Whisper transcription, and `gpt-6-astra` analysis. Deployment target: Railway backend and Expo web app.
 
 Kaung owns the backend and rendering. Vanessa owns the Expo app, visual hook title UI, and title templates.
+
+The processing design prioritizes audio upload and local-video editing while full video uploads. AI proposals reference timeline revisions. Audio normalization matches listening levels, and advisory hook/body delivery feedback offers a retake when useful.
+
+Original recordings stay in a private project library. Edits reference those originals. The design includes durable local saves, resumable verified uploads, explicit deletion, and storage status that distinguishes temporary processing copies from recoverable cloud backups.

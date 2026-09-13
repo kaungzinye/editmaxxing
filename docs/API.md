@@ -1,29 +1,34 @@
 # API contract
 
-Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body first and spoken hook attempts afterward. The app supports an optional editable starting script in its teleprompter. A second continuous recording supplies the four suggested spoken hooks. Each uploaded file gets a normalized editing source.
+Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body first and spoken hook attempts afterward. The app supports an optional editable starting script in its teleprompter. A second continuous recording supplies the four suggested spoken hooks. Register every recording before extracting audio. Audio and video belong to the same immutable source and canonical timestamp mapping.
 
 ## Routes
 
 | Method and route | Request | Response |
 | --- | --- | --- |
-| `POST /projects` | Multipart `file`, `target_duration_ms` | 202 with `project_id`, `project_token`, `job_id` |
-| `POST /projects/{id}/hooks/recording` | Multipart `file` and ordered hook IDs with edited suggestion text, containing four recorded hooks | 202 with job ID for hook transcription and take matching |
+| `POST /projects` | JSON project name and `target_duration_ms` | 201 with `project_id` and `project_token` |
+| `POST /projects/{id}/sources` | JSON immutable source ID, role, duration, media fingerprint, timestamp manifest, optional ordered hook IDs and edited suggestions | 201 with source ID |
+| `PUT /projects/{id}/sources/{source_id}/audio` | Compact audio file, checksum, extraction timing manifest | 202 with analysis job ID |
+| `POST /projects/{id}/sources/{source_id}/video/uploads` | Expected original size and checksum | 201 with resumable upload ID and part size |
+| `GET /projects/{id}/sources/{source_id}/video/uploads/{upload_id}` | Project authorization | Acknowledged parts, transfer state, and expiry |
+| `PUT /projects/{id}/sources/{source_id}/video/uploads/{upload_id}/parts/{part}` | Part bytes and checksum | Acknowledged part, idempotent for matching content |
+| `POST /projects/{id}/sources/{source_id}/video/uploads/{upload_id}/complete` | Ordered part manifest | 202 for whole-file verification and normalization |
 | `GET /jobs/{id}` | Project bearer token | Job state, stage, progress, result or error |
 | `GET /projects/{id}` | Project bearer token | Sources, words, analysis, hook candidates, current plan |
 | `POST /projects/{id}/analysis` | Project bearer token | 202 with job ID, supports analysis retry |
 | `PUT /projects/{id}/plan` | `base_revision`, `plan` | Canonical saved plan with incremented revision |
 | `POST /projects/{id}/rank` | `base_revision`, target duration, selected hook ID, dead-space setting | 202 with job ID, result contains proposed plan |
 | `POST /projects/{id}/renders` | `plan_revision`, `kind` of draft or export, selected combinations | 202 with job ID |
-| `DELETE /projects/{id}` | Project bearer token | 204 after canceling work and deleting project files |
+| `DELETE /projects/{id}` | Project authorization after explicit deletion choice | 202 with deletion job ID covering project work and remote files |
 | `GET /healthz` | Empty | 200 when storage and worker are available, otherwise 503 |
 
 The app stores project IDs and tokens locally. Hash tokens on the server. Serve media through expiring signed URLs that native and web video players can open. Refresh URLs by fetching the project. Provider credentials stay on the backend.
 
 ## Job behavior
 
-States: `queued`, `running`, `succeeded`, `failed`. Stages: `normalize`, `transcribe`, `analyze`, `plan`, `render`. Progress is an estimate between 0 and 1. Poll every two seconds while the app is active.
+States: `queued`, `running`, `succeeded`, `failed`. Source audio and video upload readiness are tracked independently from job state. Stages: `normalize`, `transcribe`, `analyze`, `plan`, `render`. Progress is an estimate between 0 and 1. Poll every two seconds while the app is active.
 
-Analysis returns a project ID and saved plan revision. Ranking returns a proposed plan and its base revision. Rendering returns a signed URL, expiration, output kind, and rendered plan revision. Persist job state. On worker restart, mark interrupted work failed with a retryable error. Run one worker for the hackathon deployment.
+Initial analysis returns the body draft and hook suggestions together and initializes an empty timeline once. Subsequent analysis returns a proposal with its base revision. Hook analysis updates candidate records independently. Ranking returns a proposed plan and its base revision. Rendering returns a signed URL, expiration, output kind, and rendered plan revision. Persist job state. On worker restart, mark interrupted work failed with a retryable error. Run one worker for the hackathon deployment.
 
 ## Plan rules
 
@@ -46,13 +51,13 @@ Draft: 540x960. Export: 1080x1920. Both use 30 fps, H.264, AAC, and MP4 fast-sta
 
 Errors use `{ "error": { "code": "invalid_plan", "message": "Clip c_1 ends beyond the source.", "retryable": false } }` with an optional request ID. Keep provider errors and secrets in server logs.
 
-Stream multi-minute raw uploads to disk. Accept initial recordings up to 20 minutes. Apply a configurable limit to the additional hook recording. Confirm the byte limit against representative footage. Return 413 for byte limits and 422 for invalid media or footage exceeding the configured source-duration limit. Clean up partial uploads. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. Start with 24 hours for the demo.
+Stream multi-minute raw uploads to disk. Accept initial recordings up to 20 minutes. Apply a configurable limit to the additional hook recording. Confirm the byte limit against representative footage. Return 413 for byte limits and 422 for invalid media or footage exceeding the configured source-duration limit. Retain acknowledged upload parts for the declared resume window, then expire abandoned parts. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. The demo processing-copy retention is 24 hours. Local originals remain in durable app storage until explicit deletion. Durable remote backup has a separate declared policy and restore capability.
 
 The synthetic fixture contains clip and caption data. Integration supplies the corresponding source media, full transcript, and hook analysis.
 
 ## Editor and hook workflow details
 
-The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator edits suggestions in the teleprompter and records all four in one additional continuous clip and submits it through `/hooks/recording`. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
+The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator edits suggestions in the teleprompter and records all four in one additional continuous clip. Register it with source role `hooks` and upload its audio and video separately. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
 
 Store visual title template IDs, slot values, and missing slot names with analysis. A slot without supporting transcript evidence requires creator input. Exclude incomplete variations from automatic export and validate readiness on render requests. The plan holds the creator's editable overlay. A null overlay represents deletion. `hold_ms` is editable and defaults to 12000. Each render request selects one or more spoken-hook/title combinations and creates an output for each against the captured body revision.
 
@@ -67,3 +72,41 @@ Hook ingestion attaches recorded takes to the project's hook candidates and pres
 ## Hook placement
 
 Each assembled combination orders the selected recorded hook clips first, starting at timeline zero, followed by the saved body clips. Source recording order is independent of playback order. Selecting another hook replaces the leading hook clips and preserves body clip order and source ranges. Recompute body and caption timeline offsets from the selected hook duration. Anchor the visual hook title to timeline zero. Apply the same assembly rule to phone preview, draft render, and each exported combination.
+
+## Media identity and readiness
+
+Source roles are `body` and `hooks`. Store separate audio and video upload checksums plus the captured recording fingerprint and extraction manifest. Both derivatives belong to the same source identity. Validate their durations and timestamp mappings, including start offsets and encoder delay, before enabling server rendering. A mismatched upload returns an actionable media error. Persist partial upload state and support retry without repeating successful analysis. Immutable source replacements receive new source IDs.
+
+The initial 20-minute duration cap applies to the registered body source and is verified against uploaded media. Enforce byte caps during each upload. Local playback maps canonical clip times back to device media time. Server normalization provides its mapping to that same canonical clock.
+
+Render requests with unavailable required video return a retryable `media_pending` conflict. The UI keeps editing available and displays upload progress. Existing ready hook/body combinations can render independently of unrelated source uploads.
+
+## Proposals and concurrency
+
+Source analysis is immutable and keyed by source fingerprint, extraction configuration, and analysis version. AI output references word and take IDs. The server compiles and validates clip ranges deterministically.
+
+Each proposal stores an ID, source analysis references, and `base_revision`. Initial draft creation uses an atomic empty-timeline check. Later proposals require an explicit apply action through the revision-checked save route. Return 409 when the base revision differs from the saved timeline. The client presents the proposal for review against current edits. Hook candidate updates and delivery feedback have separate records and preserve the user timeline.
+
+Caption overrides and deletion records belong to the saved edit. Render snapshots include selected source ranges, body revision, hook take IDs, overlays, captions, and audio settings. Optional visual scoring and feedback can complete independently of render readiness.
+
+## Audio and delivery feedback
+
+Persist `audio.normalization_enabled` and `audio.preset` on the plan. The `speech_consistent` preset measures speech levels, applies bounded hook/body gain matching, and normalizes assembled audio with true-peak control. Keep duration and sample alignment stable. Cache measurements by immutable audio identity and analyzed range. Changes to edit ranges or audio settings invalidate assembled-output measurements.
+
+Delivery feedback references hook take ID and body revision, includes measured evidence, confidence, and a suggested action. Compare the hook with the opening body passage using speaking rate, pauses, and acoustic measurements. Supply measured features and transcript context to Astra. Frame observations can enrich feedback when available. A volume difference alone requires recording-level context before interpreting performance.
+
+Return feedback through project state as advisory results. Keep, play-transition, and record-again are creator actions. Body-opening changes mark associated feedback stale. Reuse source measurements for recomputation. Audio normalization and delivery feedback operate independently.
+
+## Originals, resumable transfers, and recovery
+
+The client finalizes and stores captured originals in durable app storage before analysis. Persist a local project journal and edit revisions independently of network calls. On launch, reconcile finalized files with source records and resume acknowledged uploads. Camera recording state distinguishes recording, finalizing, and saved. Segment checkpoints require verified native recording behavior and a common logical source timeline.
+
+The server retains captured originals separately from normalized derivatives. Each upload session belongs to an immutable source ID and validates expected byte count, per-part checksums, and the assembled checksum. Retries with matching content are idempotent. Return a conflict for mismatching content under an existing part number. Persist acknowledged offsets or parts and upload expiry. Whole-original verification gates the source's verified-original state. Normalization has its own readiness state.
+
+Expose storage metadata independently of AI job state: verified original checksum, verified byte count, verification timestamp, remote copy kind of `processing` or `durable_backup`, retention expiry, and restore capability. Durable backup may be marked complete only when the full original, source metadata, and recoverable project record are persisted under the declared retention policy. The app derives Saved on this phone from its local finalized-file state. Backed up additionally requires durable remote verification and a supported restore route. Temporary server media uses Uploaded for processing and an expiry label.
+
+Project tokens support the demo processing API. Account-linked project discovery and authorized restore, or an equivalently recoverable identity mechanism, are prerequisites for cloud backup that survives app reinstall. Specify and test that capability before enabling durable-backup status or local-media eviction. A 24-hour processing copy supports the temporary render flow.
+
+Routine cleanup targets derivatives, cache, and expired processing copies. The client retains local originals while cloud copies are temporary. Free device space requires verified durable storage and restore authorization, retaining the local project manifest for download on demand. Delete original checks dependent edits and requires an explicit source-deletion action. Removing a clip from a plan changes the plan alone.
+
+Project deletion creates a tombstone, cancels work, and queues remote media and metadata deletion. Workers and upload finalization check the tombstone before publishing results. Return 202 with a deletion job ID and report success after remote deletion finishes. The client coordinates local deletion from the user's stated scope and persists pending remote deletion for retry. Expiry and deletion invalidate media access. Captured recordings shared across edits require dependency-aware deletion.

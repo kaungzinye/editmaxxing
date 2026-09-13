@@ -50,6 +50,7 @@ export interface Plan {
     hold_ms: number;
     fade_ms: 300;
   } | null;
+  audio: { normalization_enabled: boolean; preset: "speech_consistent" };
   caption_style: { preset: "classic_box"; position: Position };
   captions: Caption[];
 }
