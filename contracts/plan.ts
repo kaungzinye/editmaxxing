@@ -5,6 +5,7 @@ export interface VisualHookTitle {
   id: string;
   template_id: string;
   slots: Record<string, string>;
+  missing_slots: string[];
   text: string;
 }
 export interface SpokenHook {

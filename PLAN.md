@@ -10,9 +10,9 @@ Target finished length: 90 to 180 seconds, default 120 seconds. The target appli
 
 ## Recording and hooks
 
-The creator films the body first, with multiple lines, retakes, pauses, and flubs in one continuous recording. The creator tries their own hook ideas. The app uses the body and those ideas to propose four spoken hook variations. Confirm whether the creator records those suggestions, the app selects recorded takes, or another mechanism produces the audio.
+The creator films the body first, with multiple lines, retakes, pauses, and flubs in one continuous recording. The creator tries their own hook ideas. The app uses the body and those ideas to propose four spoken hook variations. The initial recording includes the creator's spoken hook attempts. Astra writes four spoken hook suggestions grounded in the body and those attempts. The creator records the suggestions in one additional continuous clip. The backend identifies and trims the four hook takes from that clip. Spoken suggestions permit original wording grounded in the recording.
 
-Each spoken hook has four visual hook title variations, giving 16 spoken-hook/title combinations. Vanessa supplies visual title templates with explicit named slots. Astra fills those slots using transcript evidence. The backend assembles the title while preserving the template's fixed wording. The creator can edit the resulting visual title manually.
+Each spoken hook has four visual hook title variations, giving 16 spoken-hook/title combinations. Vanessa supplies visual title templates with explicit named slots. Astra fills those slots using transcript evidence. The backend assembles the title while preserving the template's fixed wording. A slot without supporting transcript evidence is marked for the creator to fill. Its variation stays out of automatic export until the creator supplies the value. The creator can edit the resulting visual title manually.
 
 The app presents one complete body cut. The creator selects spoken-hook/title combinations to preview and export, each using that shared body cut. A selected combination identifies its spoken hook and visual title.
 
@@ -26,7 +26,7 @@ The app presents one complete body cut. The creator selects spoken-hook/title co
 
 ## Upload and normalization
 
-Prioritize one continuous body recording containing multiple lines and retakes. Expected footage is around 10 to 20 minutes. Use 20 minutes as the provisional source-duration ceiling, subject to clarification. Set a separate byte limit from a representative phone file. Additional hook footage depends on the spoken-hook recording decision. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
+Prioritize one continuous body recording containing multiple lines and retakes. The initial recording supports up to 20 minutes of footage. Set a separate byte limit from a representative phone file. The project also accepts one additional continuous recording of the four suggested hooks. Stream to disk, enforce the byte limit during upload, and inspect duration with ffprobe. Normalize HEVC, orientation, and variable frame rate into an upright H.264/AAC editing source. All transcript and clip times refer to this source.
 
 Use a 1080x1920 output canvas at 30 fps, center-cropping to fill. Show the same crop in preview. Provider keys live in backend environment variables. Use opaque project access tokens and signed media URLs for the public demo. Set a storage quota and configurable project retention.
 
@@ -99,7 +99,7 @@ Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms
 
 - A project API key with verified `gpt-6-astra` access. The task environment has no `OPENAI_API_KEY` configured.
 - Vanessa's visual hook title templates and permitted talking-head footage. Kaung settles the filming schedule.
-- How spoken hook proposals become recorded audio/video, how the creator supplies initial hook ideas, and whether the raw-upload ceiling is 10 or 20 minutes.
+- Representative phone file size for the byte limit, recording quality, and the caption style reference.
 - Exact caption reference. The default above supports initial layout work.
 - Railway and Expo deployment access.
 

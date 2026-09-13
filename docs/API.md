@@ -1,12 +1,13 @@
 # API contract
 
-Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. Specify additional hook recording routes after confirming how spoken proposals become footage. Each uploaded file gets a normalized editing source.
+Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body and spoken hook attempts. A second continuous recording supplies the four suggested spoken hooks. Each uploaded file gets a normalized editing source.
 
 ## Routes
 
 | Method and route | Request | Response |
 | --- | --- | --- |
 | `POST /projects` | Multipart `file`, `target_duration_ms` | 202 with `project_id`, `project_token`, `job_id` |
+| `POST /projects/{id}/hooks/recording` | Multipart `file` containing four recorded hook suggestions | 202 with job ID for hook transcription and take matching |
 | `GET /jobs/{id}` | Project bearer token | Job state, stage, progress, result or error |
 | `GET /projects/{id}` | Project bearer token | Sources, words, analysis, hook candidates, current plan |
 | `POST /projects/{id}/analysis` | Project bearer token | 202 with job ID, supports analysis retry |
@@ -45,14 +46,14 @@ Draft: 540x960. Export: 1080x1920. Both use 30 fps, H.264, AAC, and MP4 fast-sta
 
 Errors use `{ "error": { "code": "invalid_plan", "message": "Clip c_1 ends beyond the source.", "retryable": false } }` with an optional request ID. Keep provider errors and secrets in server logs.
 
-Stream multi-minute raw uploads to disk. Expect 10 to 20 minutes of body footage, with a provisional 20-minute ceiling. Confirm the byte limit against representative footage. Return 413 for byte limits and 422 for invalid media or footage exceeding the configured source-duration limit. Clean up partial uploads. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. Start with 24 hours for the demo.
+Stream multi-minute raw uploads to disk. Accept initial recordings up to 20 minutes. Apply a configurable limit to the additional hook recording. Confirm the byte limit against representative footage. Return 413 for byte limits and 422 for invalid media or footage exceeding the configured source-duration limit. Clean up partial uploads. Rate-limit public uploads and analysis, enforce a disk quota, configure explicit web CORS origins, and display a configurable retention period beside upload. Start with 24 hours for the demo.
 
 The synthetic fixture contains clip and caption data. Integration supplies the corresponding source media, full transcript, and hook analysis.
 
 ## Editor and hook workflow details
 
-The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. A proposal may await recorded footage. Hook acquisition and its endpoints depend on the recording decision.
+The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator records all four in one additional continuous clip and submits it through `/hooks/recording`. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
 
-Store visual title template IDs and slot values with analysis. The plan holds the creator's editable overlay. A null overlay represents deletion. `hold_ms` is editable and defaults to 12000. Each render request selects one or more spoken-hook/title combinations and creates an output for each against the captured body revision.
+Store visual title template IDs, slot values, and missing slot names with analysis. A slot without supporting transcript evidence requires creator input. Exclude incomplete variations from automatic export and validate readiness on render requests. The plan holds the creator's editable overlay. A null overlay represents deletion. `hold_ms` is editable and defaults to 12000. Each render request selects one or more spoken-hook/title combinations and creates an output for each against the captured body revision.
 
 Caption editing requires persisted overrides and deletion records, anchored to clip occurrences, alongside automatic captions. User-added caption words may have null transcript word IDs. The save implementation must preserve these edits when deriving captions. The shared types describe canonical captions, with the edit-request schema to be specified during implementation.
