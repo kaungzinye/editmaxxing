@@ -1,5 +1,7 @@
 # editmaxxing
 
+Hosted backend: [API documentation](https://editmaxxing-production.up.railway.app/docs) and [health](https://editmaxxing-production.up.railway.app/healthz). [Acceptance evidence](docs/ACCEPTANCE.md) records local checks, the live Railway flow, and restart recovery.
+
 FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes four spoken hooks, fills supplied title templates, and gives advisory delivery feedback. Code constructs clip ranges, captions, revision-bound proposals, and immutable render snapshots.
 
 Kaung's implementation lives in `backend/`. The isolated Expo integration client lives in `clients/endpoint-lab`. Vanessa owns the production app, recording experience, timeline gestures, and visual title templates. All bundled UI and rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
