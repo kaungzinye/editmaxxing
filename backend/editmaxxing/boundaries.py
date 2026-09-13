@@ -5,7 +5,7 @@ from hashlib import sha256
 
 from .models import BoundaryReview
 
-REVIEW_VERSION = "cut-boundaries-v1"
+REVIEW_VERSION = "cut-boundaries-v2"
 MAX_SHIFT_MS = 120
 BATCH_SIZE = 16
 

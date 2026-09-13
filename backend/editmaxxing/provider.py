@@ -364,7 +364,7 @@ class OpenAIProvider:
                 {
                     "type": "input_image",
                     "image_url": f"data:{mime};base64,{base64.b64encode(data).decode()}",
-                    "detail": "high" if frame.get("boundary_id") else "low",
+                    "detail": "low",
                 }
             )
         return content

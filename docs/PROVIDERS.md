@@ -86,6 +86,6 @@ Build the container locally with `docker build -t editmaxxing .`. The packaging 
 
 ## Cut boundary decisions
 
-`review_boundaries(boundaries, frames)` returns a strict `BoundaryReview` with one decision per boundary. Each decision identifies the boundary, an integer canonical timestamp, confidence and a brief reason. Each frame input is a labeled eight-frame contact sheet with its boundary ID and exact timestamps. A request contains at most 16 sheets, uses high image detail and low reasoning effort, and caps text output at 5,000 tokens. Frame extraction uses four concurrent workers and one short video decode per boundary. Identical review requests reuse cached results.
+`review_boundaries(boundaries, frames)` returns a strict `BoundaryReview` with one decision per boundary. Each decision identifies the boundary, an integer canonical timestamp, confidence and a brief reason. Each frame input is a labeled eight-frame contact sheet with its boundary ID and exact timestamps. A request contains at most 16 sheets, uses low image detail and low reasoning effort, and caps text output at 5,000 tokens. Frame extraction uses four concurrent workers and one short video decode per boundary. Identical review requests reuse cached results.
 
 The worker enforces word coverage and adjustment limits independently of the model. Visual judgments concern visible movement; source word timestamps supply the speech constraints. Uncertain decisions are exposed for creator playback.

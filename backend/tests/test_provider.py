@@ -298,7 +298,7 @@ def test_boundary_review_sends_all_sheets_and_strict_decisions(tmp_path):
     assert options["text_format"] is BoundaryReview
     content = options["input"][0]["content"]
     images = [c for c in content if c["type"] == "input_image"]
-    assert len(images) == 16 and all(i["detail"] == "high" for i in images)
+    assert len(images) == 16 and all(i["detail"] == "low" for i in images)
     assert options["max_output_tokens"] == 5000
     with pytest.raises(ProviderError, match="each|Each"):
         provider.review_boundaries(boundaries, frames[:-1])
