@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "target_duration_ms": 45000,
+  "duration_ms": 6000,
+  "target_met": true,
+  "selected_hook_id": "hook_1",
+  "clips": [
+    {
+      "id": "clip_1",
+      "source_id": "source_1",
+      "line_id": "line_1",
+      "take_id": "take_1",
+      "role": "hook",
+      "source_start_ms": 1000,
+      "source_end_ms": 3000,
+      "selection_reason": "The speaker holds eye contact through the hook."
+    },
+    {
+      "id": "clip_2",
+      "source_id": "source_1",
+      "line_id": "line_2",
+      "take_id": "take_2",
+      "role": "body",
+      "source_start_ms": 10000,
+      "source_end_ms": 14000,
+      "selection_reason": "The take contains the complete explanation."
+    }
+  ],
+  "dropped_lines": [],
+  "dead_space": {
+    "enabled": true,
+    "threshold_ms": 700,
+    "retain_ms": 250
+  },
+  "hook_overlay": {
+    "locked": true,
+    "text": "I tried a phone editor for 7 days",
+    "position": {
+      "x": 0.44,
+      "y": 0.24
+    },
+    "hold_ms": 12000,
+    "fade_ms": 300
+  },
+  "caption_style": {
+    "preset": "classic_box",
+    "position": {
+      "x": 0.44,
+      "y": 0.7
+    }
+  },
+  "captions": [
+    {
+      "id": "caption_1",
+      "clip_id": "clip_1",
+      "start_ms": 150,
+      "end_ms": 1500,
+      "words": [
+        {
+          "word_id": "w1",
+          "text": "Try"
+        },
+        {
+          "word_id": "w2",
+          "text": "this"
+        },
+        {
+          "word_id": "w3",
+          "text": "editor."
+        }
+      ],
+      "emphasis_word_id": "w3"
+    },
+    {
+      "id": "caption_2",
+      "clip_id": "clip_2",
+      "start_ms": 2200,
+      "end_ms": 3600,
+      "words": [
+        {
+          "word_id": "w4",
+          "text": "It"
+        },
+        {
+          "word_id": "w5",
+          "text": "cuts"
+        },
+        {
+          "word_id": "w6",
+          "text": "the"
+        },
+        {
+          "word_id": "w7",
+          "text": "pauses."
+        }
+      ],
+      "emphasis_word_id": "w7"
+    }
+  ]
+}
