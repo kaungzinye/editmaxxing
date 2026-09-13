@@ -6,12 +6,12 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { StatusBar } from 'expo-status-bar';
 import { randomUUID } from 'expo-crypto';
 import type { Caption, Combination, Job, JobCreated, Plan, ProjectCreated, ProjectState, SourceCreate, TimingManifest } from '../../contracts/plan';
-import { API } from './src/api';
+import { API } from '@editmaxxing/client/api';
 import { remapDraftCaptions } from './src/editor';
-import { rememberSourceChanges } from './src/transfers';
-import { extractedFile, pickFile, readFile, recoverOriginal, unlinkedOriginals } from './src/files';
-import { readJournal, readToken, saveJournal, saveToken, type Journal, type ProjectJournal, type SourceJournal } from './src/journal';
-import { extractAudio, extractionAvailable, inspectSource } from './modules/source-audio';
+import { rememberSourceChanges } from '@editmaxxing/client/transfers';
+import { extractedFile, pickFile, readFile, recoverOriginal, unlinkedOriginals } from '@editmaxxing/client/files';
+import { readJournal, readToken, saveJournal, saveToken, type Journal, type ProjectJournal, type SourceJournal } from '@editmaxxing/client/journal';
+import { extractAudio, extractionAvailable, inspectSource } from '@editmaxxing/client/source-audio';
 
 const timing = (): TimingManifest => ({ media_origin_ms: 0, encoder_delay_ms: 0, duration_ms: 10000, sample_rate: 48000, extractor: 'original' });
 const source = (role: 'body' | 'hooks' = 'body'): SourceJournal => ({ sourceId: `src_${randomUUID().replace(/-/g, '')}`, role, duration: 10000, timing: timing(), audioTiming: { ...timing(), extractor: 'ffmpeg' }, hookScripts: [] });
@@ -206,7 +206,7 @@ export default function App() {
     <Text style={styles.section}>Source and original</Text>
     {recovered.map(file => <View key={file.uri}>{action(`Recover saved ${file.name.slice(-30)}`, async () => { const next = { ...source(), original: await recoverOriginal(file) }; setSource(next); rememberSource(next); })}</View>)}
     <Text>Native file selection copies the original into Documents/originals before hashing. App removal or device loss can remove that local copy. Browser files require selection after reload. Server copies are temporary processing storage.</Text>
-    <View style={styles.row}>{action('New body source', async () => setSource(source('body')))}{action('New hooks source', async () => { const next = source('hooks'); next.hookScripts = project?.hooks.map(h => ({ hook_id: h.id, text: h.proposed_text })) ?? []; setSource(next); })}</View>
+    <View style={styles.row}>{action('New body source', async () => setSource(source('body')))}{action('New hooks source', async () => { const next = source('hooks'); next.hookScripts = project?.hooks.map(h => ({ hook_id: h.id, text: h.proposed_text, capture_revision: h.capture_revision, action_start_ms: null })) ?? []; setSource(next); })}</View>
     {currentEntry?.sources.map(item => <View key={item.sourceId}>{action(`Select ${item.role} · ${item.sourceId.slice(-6)}`, async () => setSource(item))}</View>)}
     <Field label="Source ID" value={local.sourceId} set={sourceId => setLocal({ ...local, sourceId })} />
     <Text>Role: {local.role} · Registration: {local.registered ? 'registered' : 'pending'}</Text>
@@ -306,7 +306,7 @@ export default function App() {
       <Field label={`${hook.id} spoken text`} value={hook.proposed_text} set={value => setProject(p => p ? { ...p, hooks: p.hooks.map(h => h.id === hook.id ? { ...h, proposed_text: value } : h) } : p)} />
       {action(`Save suggestion ${hook.id.slice(-6)}`, async () => { await api().request(`${path()}/hooks/${hook.id}`, 'PUT', { proposed_text: hook.proposed_text }); await fetchProject(); })}
       {hook.candidates.map(candidate => <View key={candidate.take_id}>{action(`Select take ${candidate.take_id.slice(-6)} · ${Math.round(candidate.confidence * 100)}%`, async () => { await api().request(`${path()}/hooks/${hook.id}`, 'PUT', { take_id: candidate.take_id }); await fetchProject(); })}</View>)}
-      {hook.visual_titles.map(title => <View key={title.id}><Text>{title.text} {title.missing_slots.length ? `· Missing: ${title.missing_slots.join(', ')}` : ''}</Text>{action(`Toggle ${hook.id.slice(-4)}/${title.id.slice(-4)}`, async () => {
+      {project.titles.map(title => <View key={title.id}><Text>{title.text} {title.missing_slots.length ? `· Missing: ${title.missing_slots.join(', ')}` : ''}</Text>{action(`Toggle ${hook.id.slice(-4)}/${title.id.slice(-4)}`, async () => {
         const selected: Combination[] = JSON.parse(combinationText);
         const matches = (c: Combination) => c.hook_id === hook.id && c.visual_title_id === title.id;
         setCombinationText(pretty(selected.some(matches) ? selected.filter(c => !matches(c)) : [...selected.filter(c => c.id !== 'body'), { id: `combo_${randomUUID().replace(/-/g, '')}`, hook_id: hook.id, visual_title_id: title.id, use_title: true }]));

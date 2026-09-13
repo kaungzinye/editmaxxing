@@ -81,31 +81,21 @@ def test_slow_upload_releases_capacity_and_temporary_file(lab, block_event_loop)
     assert not list((app.state.service.store.root / "incoming").iterdir())
 
 
-def test_late_templates_fill_four_variants_without_overwriting_plan(lab, tmp_path):
-    client, app, pid = lab
+def test_templates_require_configuration_before_recommendation_publication(lab, tmp_path):
+    client, _app, pid = lab
     project = fixture_analyzed(lab, tmp_path)
-    plan = project["plan"]
-    hook = project["hooks"][0]
-    client.put(f"/api/v1/projects/{pid}/hooks/{hook['id']}", json={"proposed_text": "Creator's hook"})
-    templates = [{"id": f"t{i}", "pattern": "Focus on {topic}", "slots": ["topic"]} for i in range(4)]
-    templates[0] = {"id": "t0", "pattern": "Clear audio", "slots": []}
-    response = client.put(f"/api/v1/projects/{pid}/templates", json={"templates": templates})
-    assert response.status_code == 200
-    assert len(response.json()["job_ids"]) == 1
-    interim = client.get(f"/api/v1/projects/{pid}").json()
-    assert all(len(h["visual_titles"]) == 4 for h in interim["hooks"])
-    assert all(t["missing_slots"] == ["topic"] for h in interim["hooks"] for t in h["visual_titles"][1:])
-    # The hook edit queues feedback ahead of analysis.
-    while app.state.worker.run_once():
-        pass
-    final = client.get(f"/api/v1/projects/{pid}").json()
-    job = client.get("/api/v1/jobs/" + response.json()["job_ids"][0]).json()
-    assert job["state"] == "succeeded", job
-    assert final["plan"] == plan
-    assert final["hooks"][0]["proposed_text"] == "Creator's hook"
-    assert all(len(h["visual_titles"]) == 4 for h in final["hooks"])
-    assert all(h["visual_titles"][0]["ready"] for h in final["hooks"])
-    assert all(t["missing_slots"] == ["topic"] for h in final["hooks"] for t in h["visual_titles"][1:])
+    response = client.put(
+        f"/api/v1/projects/{pid}/templates",
+        json={
+            "templates": [
+                {"id": f"t{i}", "pattern": "Focus on {topic}", "slots": ["topic"]} for i in range(4)
+            ]
+        },
+    )
+    assert response.status_code == 409
+    current = client.get(f"/api/v1/projects/{pid}").json()
+    assert current["plan"] == project["plan"]
+    assert current["titles"] == project["titles"]
 
 
 def test_public_metadata_excludes_server_paths(lab):

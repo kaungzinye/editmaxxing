@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .models import HookScript, Template, Timing, Word
-from .provider import PROMPT_VERSION, assemble_title, get_provider
+from .provider import PROMPT_VERSION, get_provider
 from .service import Problem
 from .store import uid
 
@@ -419,6 +419,11 @@ class Worker:
                         "take_id": take_id,
                         "source_id": sid,
                         "confidence": match["confidence"],
+                        "capture_revision": next(
+                            s["capture_revision"]
+                            for s in source["hook_scripts"]
+                            if s["hook_id"] == hook["id"]
+                        ),
                         "reason": match["reason"],
                         "clips": [c for c in reviewed if c["take_id"] == take_id],
                     }
@@ -428,7 +433,11 @@ class Worker:
                         hook["candidates"].append(candidate)
                     else:
                         existing.update(candidate)
-                    if hook.get("take_id") is None and match["confidence"] >= 0.65:
+                    if (
+                        hook.get("take_id") is None
+                        and match["confidence"] >= 0.65
+                        and candidate["capture_revision"] == hook["capture_revision"]
+                    ):
                         hook["take_id"] = take_id
                     if hook.get("take_id") == take_id:
                         hook["clips"] = candidate["clips"]
@@ -502,31 +511,6 @@ class Worker:
                 "editorial": editorial,
                 "fixture": source.get("fixture", False),
             }
-            if live["templates"] == p["templates"]:
-                from .models import TitleChoice
-
-                for i, hook in enumerate(editorial["hooks"]):
-                    hid = f"h_{hashlib.sha256((sid + str(i)).encode()).hexdigest()[:18]}"
-                    titles = []
-                    for j, choice in enumerate(hook["visual_titles"]):
-                        template = next(t for t in templates if t.id == choice["template_id"])
-                        title = assemble_title(TitleChoice(**choice), template, words)
-                        title["id"] = f"{hid}_v{j + 1}"
-                        titles.append(title)
-                    existing = next((h for h in live["hooks"] if h["id"] == hid), None)
-                    if existing:
-                        existing["visual_titles"] = titles
-                    else:
-                        live["hooks"].append(
-                            {
-                                "id": hid,
-                                "proposed_text": hook["proposed_text"],
-                                "take_id": None,
-                                "visual_titles": titles,
-                                "candidates": [],
-                                "clips": [],
-                            }
-                        )
             proposal = {
                 "id": uid("proposal"),
                 "base_revision": job["payload"]["base_revision"],
@@ -661,6 +645,10 @@ class Worker:
         with self.store.tx() as db:
             p = self.publishing_project(db, job)
             p["analysis"][key] = analysis
+            if "editorial" in analysis:
+                from .recommendations import publish
+
+                publish(p, analysis["source_id"], analysis["editorial"])
             self.store.save(db, p["project_id"], p)
 
     def require_review_video(self, job, sid):
@@ -680,6 +668,16 @@ class Worker:
         self.require_review_video(job, source["source_id"])
         source = self.service.source(self.project(job), source["source_id"])
         boundaries = candidate_boundaries(clips, source["words"], source["duration_ms"])
+        for boundary in boundaries:
+            if boundary["side"] == "start":
+                clip = next(c for c in clips if c["id"] == boundary["clip_id"])
+                script = next((s for s in source["hook_scripts"] if s["hook_id"] == clip["line_id"]), None)
+                if (
+                    script
+                    and script["action_start_ms"] is not None
+                    and clip["source_start_ms"] == script["action_start_ms"]
+                ):
+                    boundary["min_ms"] = boundary["max_ms"] = script["action_start_ms"]
         key = hashlib.sha256(
             json.dumps(
                 [
@@ -885,6 +883,10 @@ class Worker:
             outputs.append(
                 {
                     "combination_id": combination["combination_id"],
+                    "render_job_id": job["id"],
+                    "input_hash": combination["input_hash"],
+                    "hook_revision": combination["hook_revision"],
+                    "title_revision": combination["title_revision"],
                     "plan_revision": snapshot["plan_revision"],
                     "hook_take_id": combination["hook_take_id"],
                     "kind": snapshot["kind"],

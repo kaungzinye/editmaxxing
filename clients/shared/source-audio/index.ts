@@ -1,5 +1,5 @@
 import { requireOptionalNativeModule } from 'expo';
-import type { TimingManifest } from '../../../../contracts/plan';
+import type { TimingManifest } from '../../../contracts/plan';
 export interface AudioExtraction {
   uri: string;
   source_duration_ms: number;

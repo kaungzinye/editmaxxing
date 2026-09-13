@@ -240,8 +240,8 @@ class Smoke:
             and state["sources"]["smoke_body"]["video_state"] == "ready",
         )
         self.check(
-            "Body analysis supplies four hooks and sixteen title choices",
-            len(state["hooks"]) == 4 and sum(len(hook["visual_titles"]) for hook in state["hooks"]) == 16,
+            "Body analysis supplies independent hook and title choices",
+            len(state["hooks"]) == 4 and len(state["titles"]) <= 4,
         )
         plan = copy.deepcopy(state["plan"])
         if len(plan["clips"]) > 1:
@@ -293,7 +293,15 @@ class Smoke:
             ),
         )
         self.wait(self.video(body_manifest))
-        scripts = [{"hook_id": hook["id"], "text": hook["proposed_text"]} for hook in state["hooks"]]
+        scripts = [
+            {
+                "hook_id": hook["id"],
+                "text": hook["proposed_text"],
+                "capture_revision": hook["capture_revision"],
+                "action_start_ms": None,
+            }
+            for hook in state["hooks"]
+        ]
         hooks = synthetic_video(
             " [[slnc 1200]] ".join(script["text"] for script in scripts), self.directory, "hooks"
         )
@@ -325,12 +333,12 @@ class Smoke:
             {
                 "id": f"combo_{index + 1}",
                 "hook_id": hook["id"],
-                "visual_title_id": hook["visual_titles"][0]["id"],
+                "visual_title_id": state["titles"][0]["id"],
                 "use_title": True,
                 "overlay": {
                     "text": "Synthetic integration",
                     "position": {"x": 0.44, "y": 0.24},
-                    "hold_ms": 12000,
+                    "hold_ms": 4000,
                     "fade_ms": 300,
                 },
             }

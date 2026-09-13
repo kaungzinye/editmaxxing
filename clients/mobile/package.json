@@ -1,0 +1,41 @@
+{
+  "name": "editmaxxing-frontend",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~57.0.22",
+    "expo-camera": "~57.0.5",
+    "expo-image-picker": "~57.0.17",
+    "expo-status-bar": "~57.0.1",
+    "expo-video": "~57.0.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "expo-crypto": "~57.0.3",
+    "expo-document-picker": "~57.0.2",
+    "expo-file-system": "~57.0.7",
+    "expo-secure-store": "~57.0.4",
+    "expo-dev-client": "~57.0.19",
+    "@editmaxxing/client": "1.0.0",
+    "expo-sharing": "~57.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3",
+    "tsx": "^4.23.13",
+    "@types/node": "^22.20.2"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test scripts/*.test.ts",
+    "build:web": "expo export --platform web"
+  },
+  "private": true
+}

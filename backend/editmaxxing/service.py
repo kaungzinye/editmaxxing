@@ -68,6 +68,10 @@ class Service:
             "boundary_reviews": {},
             "takes": {},
             "hooks": [],
+            "titles": [],
+            "recommendations": {"status": "pending", "short_set_reason": ""},
+            "pair_assessments": {},
+            "render_requests": {},
             "templates": [],
             "proposals": [],
             "feedback": [],
@@ -150,6 +154,19 @@ class Service:
                 raise Problem("invalid_hooks", "Hook scripts must identify distinct hooks.")
             if any(s.hook_id not in hook_ids for s in request.hook_scripts):
                 raise Problem("invalid_hooks", "Hook scripts must reference this project’s hook suggestions.")
+            for script in request.hook_scripts:
+                hook = next(h for h in p["hooks"] if h["id"] == script.hook_id)
+                if (
+                    script.capture_revision != hook["capture_revision"]
+                    or script.text != hook["proposed_text"]
+                ):
+                    raise Problem(
+                        "capture_stale", "Refresh capture instructions before registering this take.", 409
+                    )
+                if hook["action_enabled"] != (script.action_start_ms is not None):
+                    raise Problem("invalid_action", "Confirm an action start for an enabled physical hook.")
+                if script.action_start_ms is not None and script.action_start_ms >= request.duration_ms:
+                    raise Problem("invalid_action", "Action start must be within the recording.")
             p["sources"][request.source_id] = dict(
                 **registered,
                 registration=registered,
@@ -361,9 +378,9 @@ class Service:
         if hook is None:
             raise Problem("invalid_selection", "Selected hook belongs to another project.")
         if plan["selected_visual_title_id"] and not any(
-            t["id"] == plan["selected_visual_title_id"] for t in hook["visual_titles"]
+            t["id"] == plan["selected_visual_title_id"] for t in p["titles"]
         ):
-            raise Problem("invalid_selection", "Visual title must belong to the selected spoken hook.")
+            raise Problem("invalid_selection", "Visual title must belong to this project.")
         if hook_clips and (
             not hook.get("take_id") or any(c["take_id"] != hook["take_id"] for c in hook_clips)
         ):
@@ -386,9 +403,29 @@ class Service:
 
     def queue_render(self, pid, token, request):
         from .editing import assemble_combination
+        from .recommendations import assess_pairs, check_capture
+
+        def existing_request(project):
+            if request.request_id and request.request_id in project["render_requests"]:
+                record = project["render_requests"][request.request_id]
+                if record["request"] != request.model_dump():
+                    raise Problem(
+                        "request_conflict", "A render request ID identifies one immutable request.", 409
+                    )
+                return record["response"]
+            return None
 
         with self.store.tx() as db:
             p = self.require(db, pid, token)
+            existing = existing_request(p)
+            if existing:
+                return existing
+        checked = assess_pairs(self, pid, token, request)
+        with self.store.tx() as db:
+            p = self.require(db, pid, token)
+            existing = existing_request(p)
+            if existing:
+                return existing
             self.check_revision(p, request.plan_revision)
             if len({c.id for c in request.combinations}) != len(request.combinations):
                 raise Problem("duplicate_combination", "Combination IDs must be unique.")
@@ -400,15 +437,22 @@ class Service:
                         "hook_pending", "Select a matched recorded hook before rendering.", 409, True
                     )
                 title = next(
-                    (
-                        t
-                        for t in (hook or {}).get("visual_titles", [])
-                        if t["id"] == combination.visual_title_id
-                    ),
+                    (t for t in p["titles"] if t["id"] == combination.visual_title_id),
                     None,
                 )
+                if hook:
+                    check_capture(p, hook)
+                if combination.id in checked and checked[combination.id] != (
+                    hook["text_revision"],
+                    title["text_revision"],
+                ):
+                    raise Problem(
+                        "revision_conflict",
+                        "Recommendations changed during pair validation. Retry rendering.",
+                        409,
+                    )
                 if combination.visual_title_id and title is None:
-                    raise Problem("invalid_selection", "Visual title must belong to the selected hook.")
+                    raise Problem("invalid_selection", "Visual title must belong to this project.")
                 if combination.use_title and title and title["missing_slots"] and combination.overlay is None:
                     saved_override = (
                         p["plan"]["selected_visual_title_id"] == title["id"]
@@ -438,6 +482,9 @@ class Service:
                         "combination_id": combination.id,
                         "plan": plan,
                         "hook_take_id": (hook or {}).get("take_id"),
+                        "hook_revision": (hook or {}).get("capture_revision"),
+                        "title_revision": (title or {}).get("text_revision"),
+                        "input_hash": hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest(),
                     }
                 )
             required_sources = {clip["source_id"] for output in outputs for clip in output["plan"]["clips"]}
@@ -448,7 +495,17 @@ class Service:
                 "sources": {sid: copy.deepcopy(p["sources"][sid]) for sid in required_sources},
             }
             job = self.store.enqueue(db, pid, "render", snapshot)
-            return {"job_id": job["id"]}
+            response = {
+                "job_id": job["id"],
+                "inputs": [{k: v for k, v in output.items() if k != "plan"} for output in outputs],
+            }
+            if request.request_id:
+                p["render_requests"][request.request_id] = {
+                    "request": request.model_dump(),
+                    "response": response,
+                }
+                self.store.save(db, pid, p)
+            return response
 
     def visual_review(self, pid, token, request):
         with self.store.tx() as db:
@@ -488,6 +545,8 @@ class Service:
     def public_project(self, p):
         result = copy.deepcopy(p)
         result.pop("revisions", None)
+        result.pop("render_requests", None)
+        result.pop("pair_assessments", None)
         for s in result["sources"].values():
             for name in ("audio_metadata", "video_metadata"):
                 if isinstance(s.get(name), dict):
@@ -542,9 +601,6 @@ class Service:
     def set_templates(self, pid, token, request):
         from string import Formatter
 
-        from .models import SlotValue, TitleChoice, Word
-        from .provider import assemble_title
-
         ids = set()
         for template in request.templates:
             if template.id in ids or len(set(template.slots)) != len(template.slots):
@@ -565,18 +621,10 @@ class Service:
             if p["templates"] == templates:
                 return {"templates": templates}
             p["templates"] = templates
-            for hook in p["hooks"]:
-                hook["visual_titles"] = []
-                for index, template in enumerate(request.templates):
-                    choice = TitleChoice(
-                        template_id=template.id,
-                        slots=[
-                            SlotValue(name=name, value="", evidence_word_ids=[]) for name in template.slots
-                        ],
-                    )
-                    title = assemble_title(choice, template, [Word(**word) for word in p["words"]])
-                    title["id"] = f"{hook['id']}_v{index + 1}"
-                    hook["visual_titles"].append(title)
+            if p["recommendations"]["status"] == "ready":
+                raise Problem(
+                    "recommendations_ready", "Set templates before body recommendations publish.", 409
+                )
             self.store.save(db, pid, p)
             jobs = []
             for source in p["sources"].values():

@@ -75,6 +75,10 @@ def generate(output_dir: Path) -> None:
     ]
     editorial = provider.analyze(body_words, templates)
     takes = {t.id: t.model_dump() for t in editorial.takes}
+    titles = [
+        {"id": f"title_fixture_{i + 1}", **assemble_title(choice.template, templates[i], body_words)}
+        for i, choice in enumerate(editorial.titles)
+    ]
     hooks = []
     scripts = [
         HookScript(hook_id=f"hook_fixture_{i + 1}", text=h.proposed_text)
@@ -94,20 +98,12 @@ def generate(output_dir: Path) -> None:
             "emphasis_word_ids": [],
         }
         takes[take["id"]] = take
-        titles = []
-        for j, choice in enumerate(hook.visual_titles):
-            titles.append(
-                {
-                    "id": f"hook_fixture_{i + 1}_title_{j + 1}",
-                    **assemble_title(choice, templates[j], body_words),
-                }
-            )
         hooks.append(
             {
                 "id": scripts[i].hook_id,
                 "proposed_text": hook.proposed_text,
                 "take_id": take["id"],
-                "visual_titles": titles,
+                "capture_revision": 1,
                 "clips": clips_for_take(take, words, sources),
             }
         )
@@ -116,11 +112,11 @@ def generate(output_dir: Path) -> None:
     plan = assemble_combination(
         plan,
         hooks[0],
-        hooks[0]["visual_titles"][0],
+        titles[0],
         {
             "id": "fixture_combination",
             "hook_id": hooks[0]["id"],
-            "visual_title_id": hooks[0]["visual_titles"][0]["id"],
+            "visual_title_id": titles[0]["id"],
             "use_title": True,
         },
         words,
@@ -134,6 +130,7 @@ def generate(output_dir: Path) -> None:
         "words": words,
         "takes": takes,
         "hooks": hooks,
+        "titles": titles,
         "templates": [t.model_dump() for t in templates],
         "plan": plan,
     }

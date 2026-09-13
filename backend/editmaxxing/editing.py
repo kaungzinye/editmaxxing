@@ -89,6 +89,13 @@ def clips_for_take(
         right = [min(end, s["end_ms"]) for s in detected if s["end_ms"] > speech_end and s["start_ms"] <= end]
         start = min(left) if left else speech_start
         end = max(right) if right else speech_end
+    script = next(
+        (s for s in sources[source_id].get("hook_scripts", []) if s["hook_id"] == take["line_id"]), None
+    )
+    if script and script["action_start_ms"] is not None:
+        if script["action_start_ms"] > speech_start:
+            raise EditError("The physical action must begin before the first spoken word.")
+        start = script["action_start_ms"]
     cuts = []
     if dead_space_enabled:
         audible = [w for w in source_words if w["end_ms"] > start and w["start_ms"] < end]
@@ -230,6 +237,25 @@ def canonicalize_plan(
                 or take_words[0]["source_id"] != clip["source_id"]
             ):
                 raise EditError(f"Clip {clip['id']} has inconsistent take references.")
+    for take_id in dict.fromkeys(c["take_id"] for c in canonical["clips"] if c["role"] == "hook"):
+        retained = [c for c in canonical["clips"] if c["take_id"] == take_id]
+        first = retained[0]
+        script = next(
+            (
+                s
+                for s in sources[first["source_id"]].get("hook_scripts", [])
+                if s["hook_id"] == first["line_id"]
+            ),
+            None,
+        )
+        if script and script["action_start_ms"] is not None:
+            opening_words = _take_words(takes[take_id], index) if takes else []
+            if first["source_start_ms"] != script["action_start_ms"] or (
+                opening_words and first["source_end_ms"] <= opening_words[0]["start_ms"]
+            ):
+                raise EditError(
+                    "The hook opening must retain the confirmed physical action through its first spoken word."
+                )
     edit_ids = set()
     for edit in canonical["caption_edits"]:
         if edit["id"] in edit_ids:
@@ -466,10 +492,8 @@ def assemble_combination(
             )
         else:
             raise EditError("The selected hook needs available clip ranges.")
-    if title_id is not None:
-        titles = {title["id"]: title for title in (hook or {}).get("visual_titles", [])}
-        if title_id not in titles or visual_title is None or visual_title.get("id") != title_id:
-            raise EditError("The visual title must belong to the selected hook.")
+    if title_id is not None and (visual_title is None or visual_title.get("id") != title_id):
+        raise EditError("The visual title must match the project selection.")
     use_title = combination.get("use_title", True)
     if not use_title:
         overlay = None
@@ -485,7 +509,7 @@ def assemble_combination(
         overlay = {
             "text": visual_title["text"],
             "position": {"x": 0.44, "y": 0.24},
-            "hold_ms": 12000,
+            "hold_ms": 4000,
             "fade_ms": 300,
         }
     else:

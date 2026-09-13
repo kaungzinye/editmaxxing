@@ -1,0 +1,23 @@
+{
+  "name": "@editmaxxing/client",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./api": "./src/api.ts",
+    "./files": "./src/files.ts",
+    "./journal": "./src/journal.ts",
+    "./transfers": "./src/transfers.ts",
+    "./source-audio": "./source-audio/index.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0"
+  },
+  "peerDependencies": {
+    "expo": "~57.0.22",
+    "expo-crypto": "~57.0.3",
+    "expo-document-picker": "~57.0.2",
+    "expo-file-system": "~57.0.7",
+    "expo-secure-store": "~57.0.4",
+    "react-native": "0.86.3"
+  }
+}

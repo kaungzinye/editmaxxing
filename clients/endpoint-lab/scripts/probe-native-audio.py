@@ -22,7 +22,7 @@ def decode(path):
 with tempfile.TemporaryDirectory(prefix='editmaxxing-native-clock-') as temporary:
     directory = Path(temporary)
     executable = directory / 'extract-audio'
-    run('xcrun', 'swiftc', '-parse-as-library', str(ROOT / 'modules/source-audio/ios/AudioExtractor.swift'), str(ROOT / 'scripts/extract-audio.swift'), '-o', str(executable))
+    run('xcrun', 'swiftc', '-parse-as-library', str(ROOT.parent / 'shared/source-audio/ios/AudioExtractor.swift'), str(ROOT / 'scripts/extract-audio.swift'), '-o', str(executable))
     source = directory / 'source.mov'
     run('ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x284:rate=30:duration=3', '-f', 'lavfi', '-i', 'anoisesrc=color=white:sample_rate=16000:duration=3:seed=177:amplitude=0.2', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'pcm_s16le', str(source))
     audio = directory / 'audio.m4a'

@@ -57,3 +57,15 @@ export function unlinkedOriginals(knownUris: string[]): LocalFile[] {
 export async function recoverOriginal(file: LocalFile) {
   return { ...file, sha256: await fileChecksum(readFile(file)) };
 }
+
+/** Copy camera and picker output into durable storage before registration. */
+export async function finalizeRecording(uri: string, name: string): Promise<LocalFile> {
+  if (Platform.OS !== 'ios') throw new Error('Open the iOS development build to process recordings.');
+  const directory = new Directory(Paths.document, 'originals');
+  directory.create({ intermediates: true, idempotent: true });
+  const destination = new File(directory, `${randomUUID()}.mp4`);
+  new File(uri).copy(destination);
+  const result = { uri: destination.uri, name, size: destination.size, mime: 'video/mp4', sha256: '' };
+  result.sha256 = await fileChecksum(readFile(result));
+  return result;
+}

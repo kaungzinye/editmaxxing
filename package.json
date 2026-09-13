@@ -1,0 +1,13 @@
+{
+  "name": "editmaxxing-clients",
+  "private": true,
+  "workspaces": [
+    "clients/shared",
+    "clients/mobile",
+    "clients/endpoint-lab"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:clients": "npm run test --workspaces --if-present"
+  }
+}

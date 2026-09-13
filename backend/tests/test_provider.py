@@ -102,10 +102,10 @@ def test_editorial_rejects_two_selected_takes_for_one_line(editorial, words, tem
 
 
 def test_editorial_rejects_invented_template_and_emphasis(editorial, words, templates):
-    editorial.hooks[0].visual_titles[0].template_id = "invented"
-    with pytest.raises(ProviderError, match="one title choice"):
+    editorial.titles[0].template.template_id = "invented"
+    with pytest.raises(ProviderError, match="supplied template"):
         validate_editorial(editorial, words, templates)
-    editorial.hooks[0].visual_titles[0].template_id = templates[0].id
+    editorial.titles[0].template.template_id = templates[0].id
     editorial.takes[0].emphasis_word_ids = [words[-1].id]
     with pytest.raises(ProviderError, match="Caption emphasis"):
         validate_editorial(editorial, words, templates)
@@ -154,7 +154,8 @@ def test_template_parser_accepts_only_declared_plain_slots(pattern):
 def test_empty_templates_preserve_spoken_suggestions(words):
     editorial = FixtureProvider().analyze(words, [])
     assert len(editorial.hooks) == 4
-    assert all(hook.visual_titles == [] for hook in editorial.hooks)
+    assert len(editorial.titles) == 4
+    assert all(title.template is None for title in editorial.titles)
 
 
 def test_hook_match_rejects_unknown_hook_and_reused_take(words):

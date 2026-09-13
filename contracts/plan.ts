@@ -13,7 +13,7 @@ export interface TimingManifest {
   sample_rate: number;
   extractor: string;
 }
-export interface HookScript { hook_id: string; text: string }
+export interface HookScript { hook_id: string; text: string; capture_revision: number; action_start_ms: Millis | null }
 export interface SourceCreate {
   source_id: string;
   role: SourceRole;
@@ -29,22 +29,26 @@ export interface Word {
   start_ms: Millis;
   end_ms: Millis;
 }
-export interface VisualHookTitle {
+export interface Recommendation {
+  generated_text: string; text_revision: number; rationale_revision: number;
+  mechanism: string; rationale: string; evidence_word_ids: string[]; validation: "pending" | "supported";
+}
+export interface VisualHookTitle extends Recommendation {
   id: string;
-  template_id: string;
+  template_id: string | null;
   slots: Record<string, string>;
   missing_slots: string[];
   text: string;
 }
-export interface SpokenHook {
+export interface SpokenHook extends Recommendation {
   id: string;
   proposed_text: string;
   take_id: string | null;
-  visual_titles: VisualHookTitle[];
+  movement: string; action_enabled: boolean; capture_revision: number;
   candidates: HookCandidate[];
   clips: Clip[];
 }
-export interface HookCandidate { take_id: string; source_id: string; confidence: number; reason: string; clips: Clip[] }
+export interface HookCandidate { capture_revision: number; take_id: string; source_id: string; confidence: number; reason: string; clips: Clip[] }
 export interface Take {
   id: string; source_id: string; line_id: string; word_ids: string[];
   role: "body" | "hook"; score: number; selected: boolean; reason: string; emphasis_word_ids: string[];
@@ -119,6 +123,7 @@ export interface Combination {
   use_title: boolean;
 }
 export interface RenderRequest {
+  request_id?: string;
   plan_revision: number;
   kind: "draft" | "export";
   combinations: Combination[];
@@ -178,7 +183,12 @@ export interface SourceState extends SourceCreate {
   editing_media?: SignedMedia;
   original_media?: SignedMedia;
 }
-export interface RenderOutput extends SignedMedia {
+export interface RenderInput {
+  combination_id: string; hook_take_id: string | null; hook_revision: number | null; title_revision: number | null; input_hash: string;
+}
+export interface RenderQueued extends JobCreated { inputs: RenderInput[] }
+export interface RenderOutput extends SignedMedia, RenderInput {
+  render_job_id: string;
   combination_id: string;
   plan_revision: number;
   hook_take_id: string | null;
@@ -205,6 +215,8 @@ export interface ProjectState {
   boundary_reviews: Record<string, BoundaryReviewRecord>;
   takes: Record<string, Take>;
   hooks: SpokenHook[];
+  titles: VisualHookTitle[];
+  recommendations: { status: "pending" | "ready"; short_set_reason: string };
   proposals: Proposal[];
   feedback: DeliveryFeedback[];
   outputs: RenderOutput[];
@@ -232,6 +244,7 @@ export interface BoundaryDecision {
 export interface ProjectCreate { name: string; target_duration_ms: TargetDuration }
 export interface UploadCreate { size_bytes: number; sha256: string }
 export interface CompleteUpload { parts: { part: number; sha256: string }[] }
-export interface HookUpdate { proposed_text?: string; take_id?: string }
+export interface HookUpdate { proposed_text?: string; take_id?: string; movement?: string; action_enabled?: boolean; base_revision?: number }
+export interface TitleUpdate { text: string; base_revision: number }
 export interface SourceDependencies { source_id: string; current_clip_ids: string[]; saved_revisions: number[]; hook_ids: string[] }
 export interface RenderResult { plan_revision: number; outputs: RenderOutput[] }

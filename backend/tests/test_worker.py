@@ -107,9 +107,9 @@ def seed(workspace, *, hook=False, original=b"immutable original"):
                     "take_id": "ht",
                     "proposed_text": "Hook",
                     "clips": hclips,
-                    "visual_titles": [{"id": "title", "text": "Title", "missing_slots": []}],
                 }
             ]
+            p["titles"] = [{"id": "title", "text": "Title", "missing_slots": []}]
             p["plan"].update(
                 clips=hclips + p["plan"]["clips"],
                 selected_hook_id="h",
@@ -157,7 +157,8 @@ def test_cancel_between_checkpoint_and_analysis_publish_preserves_project(worksp
     assert result["state"] == "cancelled"
     p = client.get(f"/api/v1/projects/{pid}").json()
     assert p["plan"]["revision"] == 0 and p["plan"]["clips"] == []
-    assert p["analysis"] and p["hooks"] == []
+    assert p["analysis"] and len(p["hooks"]) == 4
+    assert p["recommendations"]["status"] == "ready"
 
 
 def test_rank_snapshot_retains_caption_title_and_reserves_hook_duration(workspace):

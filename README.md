@@ -2,9 +2,9 @@
 
 Hosted backend: [API documentation](https://editmaxxing-production.up.railway.app/docs) and [health](https://editmaxxing-production.up.railway.app/healthz). [Acceptance evidence](docs/ACCEPTANCE.md) records local checks, the live Railway flow, and restart recovery.
 
-FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes four spoken hooks, fills supplied title templates, and gives advisory delivery feedback. Code constructs candidate clip ranges. Astra reviews four frames before and four at/after each boundary, then code validates timestamp adjustments and builds captions, revision-bound proposals, and immutable render snapshots.
+FastAPI and ffmpeg turn talking-head recordings into editable vertical videos. Whisper supplies canonical word timestamps. `gpt-6-astra` selects takes, proposes independent spoken and on-screen hooks with body evidence, and gives advisory delivery feedback. Code constructs candidate clip ranges. Astra reviews four frames before and four at/after each boundary, then code validates timestamp adjustments and builds captions, revision-bound proposals, and immutable render snapshots.
 
-Kaung's implementation lives in `backend/`. The isolated Expo integration client lives in `clients/endpoint-lab`. Vanessa owns the production app, recording experience, timeline gestures, and visual title templates. All bundled UI and rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
+The API lives in `backend/`. Vanessa's integrated creator app lives in `clients/mobile/`; the endpoint lab lives in `clients/endpoint-lab/`. Both apps share `clients/shared/`. Rendered text uses [TikTok Sans](https://github.com/tiktok/TikTokSans).
 
 ## Run locally
 
@@ -22,9 +22,8 @@ Open [API docs](http://localhost:8000/docs) and [health](http://localhost:8000/h
 Start the endpoint lab in another terminal:
 
 ```sh
-cd clients/endpoint-lab
 npm ci
-npm run web
+npm run web --workspace endpoint-lab
 ```
 
 Enter `http://localhost:8000` as the API origin. A phone needs the computer's LAN address. Set exact web origins in `CORS_ORIGINS`. [Client walkthrough](docs/CLIENT.md) covers file preparation, native extraction, upload recovery, editing, hooks, and playback.
@@ -68,4 +67,4 @@ Projects receive opaque bearer tokens. Media URLs expire and refresh through pro
 - [Endpoint client and native extraction evidence](docs/CLIENT.md)
 - [Source-backed fixture](fixtures/project.json)
 
-Vanessa supplies four title templates with named slots through the template endpoint. Missing evidence appears as an unfilled slot and excludes that title from automatic export. Creator title text and caption edits persist separately from generated content.
+The API generates up to four spoken hooks and four independent on-screen titles. Optional title templates are configured before body analysis. Creator text revisions, capture instructions and original recommendation evidence persist separately. The [iOS app guide](clients/mobile/README.md) covers capture, restart recovery, previews and export saving.

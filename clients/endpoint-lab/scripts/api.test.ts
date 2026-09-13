@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { API, RequestError, checksum, fileChecksum } from '../src/api';
-import { rememberSourceChanges } from '../src/transfers';
-import type { ProjectJournal, SourceJournal } from '../src/journal';
+import { API, RequestError, checksum, fileChecksum } from '@editmaxxing/client/api';
+import { rememberSourceChanges } from '@editmaxxing/client/transfers';
+import type { ProjectJournal, SourceJournal } from '@editmaxxing/client/journal';
 
 const bytes = new TextEncoder().encode('abcdefghijklmn');
 const file = { size: bytes.length, read: async (start: number, end: number) => bytes.slice(start, end) };

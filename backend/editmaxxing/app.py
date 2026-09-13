@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from .config import Settings
 from .models import (
     CompleteUpload,
+    HookUpdate,
     ProjectCreate,
     Rank,
     RenderRequest,
@@ -29,6 +30,7 @@ from .models import (
     SourceCreate,
     Templates,
     Timing,
+    TitleUpdate,
     UploadCreate,
     VisualReview,
 )
@@ -269,37 +271,16 @@ def create_app(settings=None):
         return service.set_templates(pid, token(request), body)
 
     @app.put("/api/v1/projects/{pid}/hooks/{hook_id}")
-    def update_hook(pid: str, hook_id: str, body: dict, request: Request):
-        if set(body) - {"proposed_text", "take_id"}:
-            raise Problem("invalid_hook", "Hook edits accept proposed_text and take_id.")
-        if not body or ("take_id" in body and not isinstance(body["take_id"], str)):
-            raise Problem("invalid_hook", "Supply hook text or a recorded take ID.")
-        with service.store.tx() as db:
-            p = service.require(db, pid, token(request))
-            hook = next((h for h in p["hooks"] if h["id"] == hook_id), None)
-            if hook is None:
-                raise Problem("hook_missing", "Hook does not exist.", 404)
-            if "proposed_text" in body:
-                if not isinstance(body["proposed_text"], str) or not 1 <= len(body["proposed_text"]) <= 2000:
-                    raise Problem("invalid_hook", "Hook text needs 1 to 2000 characters.")
-                hook["proposed_text"] = body["proposed_text"]
-            if "take_id" in body:
-                take = p["takes"].get(body["take_id"])
-                if not take or not any(c["take_id"] == take["id"] for c in hook["candidates"]):
-                    raise Problem("invalid_hook", "Choose one of this hook’s recorded candidates.")
-                candidate = next(c for c in hook["candidates"] if c["take_id"] == take["id"])
-                if not candidate.get("clips"):
-                    raise Problem(
-                        "analysis_pending",
-                        "Analyze this hook source to review its cut boundaries.",
-                        409,
-                        True,
-                    )
-                hook["take_id"] = take["id"]
-                hook["clips"] = candidate["clips"]
-            service.store.save(db, pid, p)
-            service.store.enqueue(db, pid, "feedback", {"body_revision": p["plan"]["revision"]})
-            return hook
+    def update_hook(pid: str, hook_id: str, body: HookUpdate, request: Request):
+        from .recommendations import update_hook
+
+        return update_hook(service, pid, token(request), hook_id, body)
+
+    @app.put("/api/v1/projects/{pid}/titles/{title_id}")
+    def update_title(pid: str, title_id: str, body: TitleUpdate, request: Request):
+        from .recommendations import update_title
+
+        return update_title(service, pid, token(request), title_id, body)
 
     @app.post("/api/v1/projects/{pid}/sources/{sid}/fixture")
     def fixture(pid: str, sid: str, request: Request):
@@ -328,6 +309,18 @@ def create_app(settings=None):
                 db, record["project_id"], token(request), allow_deleted=record["kind"] == "delete"
             )
             return service.public_job(record, p)
+
+    @app.post("/api/v1/jobs/{jid}/retry", status_code=202)
+    def retry_job(jid: str, request: Request):
+        with service.store.tx() as db:
+            record = service.store.job(db, jid)
+            if record is None:
+                raise Problem("job_missing", "Job does not exist.", 404)
+            service.require(db, record["project_id"], token(request))
+            if record["state"] in ("failed", "cancelled"):
+                retry = service.store.enqueue(db, record["project_id"], record["kind"], record["payload"])
+                return {"job_id": retry["id"]}
+            return {"job_id": jid}
 
     @app.post("/api/v1/jobs/{jid}/cancel", status_code=202)
     def cancel(jid: str, request: Request):

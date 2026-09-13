@@ -34,6 +34,8 @@ class ProjectCreate(Model):
 class HookScript(Model):
     hook_id: Id
     text: str = Field(min_length=1, max_length=2000)
+    capture_revision: int = Field(default=1, ge=1)
+    action_start_ms: Millis | None = None
 
 
 class SourceCreate(Model):
@@ -132,7 +134,7 @@ class CaptionEdit(Model):
 class Overlay(Model):
     text: str = Field(max_length=500)
     position: Position = Field(default_factory=lambda: Position(y=0.24))
-    hold_ms: Millis = 12000
+    hold_ms: Millis = 4000
     fade_ms: Literal[300] = 300
 
 
@@ -203,6 +205,7 @@ class Combination(Model):
 
 
 class RenderRequest(Model):
+    request_id: Id | None = None
     plan_revision: Millis
     kind: Literal["draft", "export"]
     combinations: list[Combination] = Field(min_length=1, max_length=16)
@@ -241,14 +244,46 @@ class TitleChoice(Model):
     slots: list[SlotValue]
 
 
-class HookChoice(Model):
+class RecommendationChoice(Model):
     proposed_text: str
-    visual_titles: list[TitleChoice]
+    mechanism: str
+    rationale: str
+    evidence_word_ids: list[Id]
+
+
+class HookChoice(RecommendationChoice):
+    estimated_duration_ms: int
+
+
+class OnScreenChoice(RecommendationChoice):
+    template: TitleChoice | None
 
 
 class Editorial(Model):
     takes: list[EditorialTake]
-    hooks: list[HookChoice]
+    hooks: list[HookChoice] = Field(max_length=4)
+    titles: list[OnScreenChoice] = Field(max_length=4)
+    short_set_reason: str
+
+
+class PairAssessment(Model):
+    supported: bool
+    contradictory: bool
+    repetitive: bool
+    reason: str
+
+
+class HookUpdate(Model):
+    proposed_text: str | None = Field(default=None, min_length=1, max_length=2000)
+    take_id: Id | None = None
+    movement: str | None = None
+    action_enabled: bool | None = None
+    base_revision: int | None = Field(default=None, ge=1)
+
+
+class TitleUpdate(Model):
+    text: str = Field(min_length=1, max_length=500)
+    base_revision: int = Field(ge=1)
 
 
 class Match(Model):

@@ -1,0 +1,11 @@
+{
+  "platforms": [
+    "apple"
+  ],
+  "apple": {
+    "modules": [
+      "SourceAudioModule"
+    ],
+    "podspecPath": "source-audio/ios/SourceAudio.podspec"
+  }
+}

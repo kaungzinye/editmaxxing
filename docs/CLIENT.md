@@ -18,7 +18,7 @@ Enter the API origin, such as `http://localhost:8000`. The client appends `/api/
 npm run ios
 ```
 
-Expo SDK 57 requires Xcode 26.4 or later and iOS 16.4 or later. The implementation machine has Xcode 26.6 installed through Apple's App Store. Native compilation awaits acceptance of the displayed Xcode and Apple SDKs Agreement. The extraction core compiles for the iOS SDK, and its macOS runtime probe passes. Device extraction, device termination recovery, Photos export, Android extraction, and EAS Update distribution require their own device checks. [Expo SDK requirements](https://docs.expo.dev/versions/latest/), [local Expo modules](https://docs.expo.dev/modules/get-started/).
+Expo SDK 57 requires Xcode 26.4 or later and iOS 16.4 or later. The implementation machine has Xcode 26.6 installed through Apple's App Store. The mobile creator app builds, installs and launches on an iPhone 13 Pro. The extraction core compiles for the iOS SDK, and its macOS runtime probe passes. Device extraction, device termination recovery, Photos export, Android extraction, and EAS Update distribution require their own device checks. [Expo SDK requirements](https://docs.expo.dev/versions/latest/), [local Expo modules](https://docs.expo.dev/modules/get-started/).
 
 ## Body, edit, hooks, and render
 
@@ -61,7 +61,7 @@ Browser reload preserves project metadata, local plan drafts, and upload IDs. Se
 
 ## Native extraction contract and evidence
 
-`modules/source-audio/ios/AudioExtractor.swift` reads the original's decoded audio through AVFoundation and writes mono AAC at 16 kHz and 48 kbit/s. Extraction returns `{uri, source_duration_ms, timing}`. The timing map uses `canonical_ms = decoded_media_ms + media_origin_ms - encoder_delay_ms`. AAC decoding applies skip-sample metadata; the adapter reports `encoder_delay_ms: 0`. Leading source silence remains in the output. A discontinuity exceeding 25 ms rejects extraction.
+`clients/shared/source-audio/ios/AudioExtractor.swift` reads the original's decoded audio through AVFoundation and writes mono AAC at 16 kHz and 48 kbit/s. Extraction returns `{uri, source_duration_ms, timing}`. The timing map uses `canonical_ms = decoded_media_ms + media_origin_ms - encoder_delay_ms`. AAC decoding applies skip-sample metadata; the adapter reports `encoder_delay_ms: 0`. Leading source silence remains in the output. A discontinuity exceeding 25 ms rejects extraction.
 
 Run the shared-core probe on macOS with Xcode command-line tools and ffmpeg:
 

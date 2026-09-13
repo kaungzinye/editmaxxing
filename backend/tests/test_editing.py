@@ -269,7 +269,7 @@ def test_hook_prepend_preserves_saved_body_and_recalculates_caption_offsets():
         {**Plan().model_dump(), "revision": 7, "clips": [clip(start=1050, end=1700)]}, words, sources, takes
     )
     title = {"id": "title1", "text": "Watch this", "missing_slots": []}
-    hook = {"id": "hook1", "take_id": "hooktake", "visual_titles": [title]}
+    hook = {"id": "hook1", "take_id": "hooktake"}
     result = assemble_combination(
         plan,
         hook,
@@ -560,12 +560,12 @@ def test_overlapping_asr_chunks_have_disjoint_cues_and_contained_word_timings():
     assert_caption_lane(result["captions"])
 
 
-def test_incomplete_title_requires_creator_text_and_title_belongs_to_hook():
+def test_incomplete_title_requires_creator_text_and_project_selection():
     words = [word(1, 1000, 1500)]
     sources = {"body": {"duration_ms": 4000}}
     takes = {"t": take("t", ["w1"], role="hook")}
     title = {"id": "title", "text": "Try {tool}", "missing_slots": ["tool"]}
-    hook = {"id": "h", "take_id": "t", "visual_titles": [title]}
+    hook = {"id": "h", "take_id": "t"}
     combination = {"id": "c", "hook_id": "h", "visual_title_id": "title"}
     with pytest.raises(EditError, match="missing slots"):
         assemble_combination(Plan().model_dump(), hook, title, combination, words, sources, takes)
@@ -582,7 +582,7 @@ def test_incomplete_title_requires_creator_text_and_title_belongs_to_hook():
         == "My title"
     )
     combination["visual_title_id"] = "foreign"
-    with pytest.raises(EditError, match="belong"):
+    with pytest.raises(EditError, match="project selection"):
         assemble_combination(Plan().model_dump(), hook, title, combination, words, sources, takes)
 
 

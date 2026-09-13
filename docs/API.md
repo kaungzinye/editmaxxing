@@ -1,6 +1,6 @@
 # API contract
 
-Implementation specification. Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Project creation prioritizes one continuous body recording. The initial recording contains the body first and spoken hook attempts afterward. The app supports an optional editable starting script in its teleprompter. A second continuous recording supplies the four suggested spoken hooks. Register every recording before extracting audio. Audio and video belong to the same immutable source and canonical timestamp mapping.
+Routes use `/api/v1`. JSON uses snake_case and integer milliseconds. IDs are opaque strings. Capture one body recording and one separate source per spoken-hook take. Probe each file, finalize its original in durable local storage, register the immutable source, then upload extracted audio and original video concurrently. Both transfers use the source's canonical timestamp mapping.
 
 ## Routes
 
@@ -28,14 +28,16 @@ The app stores project IDs and tokens locally. Hash tokens on the server. Serve 
 
 States: `queued`, `running`, `succeeded`, `failed`, `cancelled`. Source audio and video upload readiness are tracked independently from job state. Stages include `normalize`, `transcribe`, `analyze`, `waiting_video`, `review_boundaries`, `plan`, `render`. Progress is an estimate between 0 and 1. Poll every two seconds while the app is active.
 
-Initial analysis returns the body draft and hook suggestions together and initializes an empty timeline once. Subsequent analysis returns a proposal with its base revision. Hook analysis updates candidate records independently. Ranking returns a proposed plan and its base revision. Rendering returns a signed URL, expiration, output kind, and rendered plan revision. Persist job state. On worker restart, mark interrupted work failed with a retryable error. Run one worker for the hackathon deployment.
+Transcript editorial analysis publishes canonical recommendations before video review. `recommendations.status` becomes `ready` with stable project hook and title IDs. Body analysis initializes an empty timeline after video normalization and cut review. Subsequent analysis returns a proposal with its base revision. Hook analysis updates candidate records independently. Ranking returns a proposed plan and its base revision. Rendering returns a signed URL, expiration, output kind, and rendered plan revision. Persist job state. On worker restart, mark interrupted work failed with a retryable error. Run one worker for the hackathon deployment.
 
 ## Plan rules
 
 - Target finished duration is an integer from 90000 to 180000 ms, default 120000.
 - Source ranges are half-open and satisfy `0 <= start < end <= source duration`.
 - Every source, line, take, and word reference belongs to the project. Clip IDs are unique.
-- Each of four spoken hooks owns four visual title variations. `selected_visual_title_id` must belong to `selected_hook_id`. Leading hook clips reference the selected spoken take. Each title references a Vanessa-supplied template through `template_id`. Astra returns explicit slot values grounded in the transcript. The backend validates slot names and preserves fixed template wording when assembling titles. Manual title edits are creator-authored overrides. Each selected export combination uses the shared body cut.
+- Project `hooks` and `titles` contain independent sets of zero to four choices. A short set includes `recommendations.short_set_reason`. Each recommendation includes generated wording, current wording, text revision, original rationale revision, curiosity mechanism, rationale and body `evidence_word_ids`. `selected_visual_title_id` references a project title. Optional templates apply once to the body title set and require supported slots.
+- Spoken hooks use fewer than twelve words with estimated natural delivery under three seconds. Capture scripts include `capture_revision` and a creator-confirmed `action_start_ms` when physical capture is enabled. Text changes and enabled action changes increment the capture revision and clear take selection. Rendering requires a reviewed candidate for that revision. The confirmed action remains continuous through the first spoken word.
+- Render pair checks assess current wording against body evidence and reject unsupported claims, contradiction and substantial repetition. Pair decisions cache exact wording and evidence. Explicit creator overlays with a null title ID remain creator-authored text.
 - The ordered clip list controls rendering. Repeated ranges represent distinct clip occurrences.
 - On save, the server derives duration and target status from clip ranges. Generate automatic captions, then apply persisted creator edits, additions, and deletions. Caption words overlap the source range and their timing is clamped to its bounds, then offset into the assembled timeline.
 - Automatic captions group continuous speech into three or four words, balancing six words as 3+3 and ten as 4+3+3. Gaps longer than 700 ms and clip boundaries separate groups; short clips and unavoidable remainders use fewer words. Every canonical caption word carries assembled `start_ms` and `end_ms` in a half-open interval. Source-linked manual words inherit transcript timing, clipped to the edit and clip bounds. Words outside those bounds drop from the cue; the saved edit retains them for further trimming. Creator words with a null transcript ID carry null timing.
@@ -59,11 +61,11 @@ The synthetic fixture contains clip and caption data. Integration supplies the c
 
 ## Editor and hook workflow details
 
-The initial analysis produces a complete body cut and four spoken hook proposals based on the body and creator ideas. Astra writes grounded spoken suggestions with original wording. The creator edits suggestions in the teleprompter and records all four in one additional continuous clip. Register it with source role `hooks` and upload its audio and video separately. The analysis job matches recorded takes to suggestions and exposes uncertain matches for creator correction. Hook proposals have a null take ID until footage is matched.
+Transcript analysis publishes independent grounded recommendations while body video uploads. Record selected spoken hooks separately, each with one script. Matching appends reviewed candidates. Select a retake explicitly through the hook update route.
 
-Store visual title template IDs, slot values, and missing slot names with analysis. A slot without supporting transcript evidence requires creator input. Exclude incomplete variations from automatic export and validate readiness on render requests. The plan holds the creator's editable overlay. A null overlay represents deletion. `hold_ms` is editable and defaults to 12000. Each render request selects one or more spoken-hook/title combinations and creates an output for each against the captured body revision.
+Templates accept exactly four records before recommendations publish. With an empty template list, the provider generates independent grounded titles. Persist title edits through `PUT /projects/{id}/titles/{title_id}` with `text` and `base_revision`. Original rationale and evidence remain associated with their generated revision.
 
-Caption editing persists overrides and deletion records anchored to clip occurrences alongside automatic captions. `caption_edits[].words` contains `word_id` and `text`; the server derives timing for canonical `captions[].words`. User-added caption words may have null transcript word IDs. Save preserves these edits when deriving captions. The shared types describe both canonical captions and source-anchored caption edits.
+The plan holds body cuts, captions and creator overlays. The default overlay hold is 4000 ms with a 300 ms fade. Set `use_title: false` to omit the title. Draft and export use the same assembly settings.
 
 ## Teleprompter and concurrent body editing
 
@@ -142,16 +144,20 @@ Create an original upload with `{size_bytes, sha256}`. The response and upload G
 
 Queued operations return `{job_id}`. Project analysis retry also returns `job_ids` when it queues work for several sources. Job GET contains `id`, `project_id`, `state`, `stage`, `progress`, `result`, and `error`. It also exposes `kind` and timestamps. Cancellation uses state `cancelled`. Poll queued and running work while the app is active.
 
-Project GET returns `project_id`, `name`, `sources`, `words`, `analysis`, `takes`, `hooks`, `templates`, `proposals`, `feedback`, `outputs`, `plan`, and `expires_at`. `sources` and `takes` are ID-keyed objects. `analysis` uses an immutable analysis hash as its key; each record contains its source ID. Source records expose separate `audio_state`, `video_state`, and `storage`. Verified processing storage contains `original_verified`, `sha256`, `size_bytes`, `verified_at`, `copy_kind: "processing"`, `expires_at`, and `restore_capable: false`. Available media has `{url, expires_at}` under `raw_audio_media`, `audio_media`, `editing_media`, or `original_media`.
+Project GET returns `project_id`, `name`, `sources`, `words`, `analysis`, `takes`, `hooks`, `titles`, `recommendations`, `templates`, `proposals`, `feedback`, `outputs`, `plan`, and `expires_at`. `sources` and `takes` are ID-keyed objects. `analysis` uses an immutable analysis hash as its key; each record contains its source ID. Source records expose separate `audio_state`, `video_state`, and `storage`. Verified processing storage contains `original_verified`, `sha256`, `size_bytes`, `verified_at`, `copy_kind: "processing"`, `expires_at`, and `restore_capable: false`. Available media has `{url, expires_at}` under `raw_audio_media`, `audio_media`, `editing_media`, or `original_media`.
 
 A proposal contains `{id, base_revision, analysis_refs, plan}`. Apply it through plan save with `{base_revision, plan, proposal_id}`. A canonical plan includes `caption_edits`; each manual edit identifies `clip_id`, a source-time range, replacement word IDs, creator words, and a deletion flag. The source anchors apply to one clip occurrence and survive reorder operations. Save returns the canonical plan directly.
 
-A spoken hook contains `id`, `proposed_text`, `take_id`, `visual_titles`, `candidates`, and `clips`. A recorded candidate contains `{take_id, source_id, confidence, reason}`. Render job results contain `{plan_revision, outputs}`. Each output includes `combination_id`, `plan_revision`, `hook_take_id`, `kind`, `metadata`, `url`, and `expires_at`. Fetching the project refreshes output URLs.
+A spoken hook contains `id`, `proposed_text`, `generated_text`, `text_revision`, `rationale_revision`, `mechanism`, `rationale`, `evidence_word_ids`, `validation`, `movement`, `action_enabled`, `capture_revision`, `take_id`, `candidates`, and `clips`. Project titles share the recommendation fields and expose `text`, `template_id`, `slots` and `missing_slots`. Candidates include `capture_revision`, `take_id`, `source_id`, `confidence`, `reason` and reviewed `clips`.
+
+Render requests accept an optional `request_id` for durable retry. Repeating that ID with identical payload returns the same `{job_id, inputs}`. Reusing it for a different payload returns `409 request_conflict`. Each input contains combination ID, take ID, capture revision, title revision and `input_hash`. Outputs also contain `render_job_id`, `plan_revision`, `kind`, metadata, URL and expiry. Clients attach outputs only after job success and a complete match with current request inputs. Project GET refreshes signed URLs.
 
 | Additional route | Request and behavior |
 | --- | --- |
 | `PUT /projects/{id}/templates` | `{templates: [{id, pattern, slots}, ...]}`, exactly four supplied templates |
-| `PUT /projects/{id}/hooks/{hook_id}` | Edited `proposed_text`, selected candidate `take_id`, or both |
+| `PUT /projects/{id}/hooks/{hook_id}` | `proposed_text`, `movement`, `action_enabled`, `base_revision`, or selected candidate `take_id` |
+| `PUT /projects/{id}/titles/{title_id}` | `text` and `base_revision` persist a title revision |
+| `POST /jobs/{id}/retry` | Failed or cancelled work queues a separate job with the captured inputs |
 | `POST /jobs/{id}/cancel` | Cancel queued or running work; deletion completes through its own job |
 | `GET /projects/{id}/sources/{source_id}/dependencies` | Current clip IDs, saved revisions, and hook references |
 | `DELETE /projects/{id}/sources/{source_id}?confirm=true` | Explicit original deletion after inspecting dependencies; active use returns a conflict |

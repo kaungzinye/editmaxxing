@@ -1,7 +1,7 @@
 /** Run against an isolated fixture-enabled API with prepared fixture media. */
 import { readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { API, checksum } from '../src/api';
+import { API, checksum } from '@editmaxxing/client/api';
 import type { Job, JobCreated, Plan, ProjectCreated, ProjectState } from '../../../contracts/plan';
 
 async function main() {
@@ -41,7 +41,7 @@ async function main() {
   const saved = await api.request<Plan>(`${prefix}/plan`, 'PUT', { base_revision: state.plan.revision, plan: edited });
   assert.equal(saved.revision, state.plan.revision + 1);
   const bodyClips = structuredClone(saved.clips);
-  await register('hooks', 'hooks', state.hooks.map(h => ({ hook_id: h.id, text: h.proposed_text })));
+  await register('hooks', 'hooks', state.hooks.map(h => ({ hook_id: h.id, text: h.proposed_text, capture_revision: h.capture_revision, action_start_ms: null })));
   state = await api.request<ProjectState>(prefix);
   assert.deepEqual(state.plan.clips, bodyClips);
   const hook = state.hooks.find(h => h.take_id);
