@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from copy import deepcopy
 from hashlib import sha256
+from heapq import heappop, heappush
+from itertools import pairwise
 from typing import Any
 
 from .models import Plan
@@ -145,6 +147,54 @@ def _caption_chunks(words: list[dict]) -> list[list[dict]]:
     return chunks
 
 
+def _caption_lane(candidates: list[tuple[int, dict]], source_offset_ms: int) -> list[dict]:
+    """Give creator edits their anchored intervals on a single caption lane."""
+    starts = {}
+    boundaries = set()
+    for number, (priority, caption) in enumerate(candidates):
+        left, right = caption["start_ms"], caption["end_ms"]
+        starts.setdefault(left, []).append((-priority, -left, -number, number))
+        boundaries.update((left, right))
+    active, segments = [], []
+    for left, right in pairwise(sorted(boundaries)):
+        for item in starts.get(left, []):
+            heappush(active, item)
+        while active and candidates[active[0][3]][1]["end_ms"] <= left:
+            heappop(active)
+        if not active:
+            continue
+        winner = active[0][3]
+        if segments and segments[-1][0] == winner and segments[-1][2] == left:
+            segments[-1] = (winner, segments[-1][1], right)
+        else:
+            segments.append((winner, left, right))
+    counts = {}
+    for winner, _, _ in segments:
+        counts[winner] = counts.get(winner, 0) + 1
+    captions = []
+    for winner, left, right in segments:
+        caption = deepcopy(candidates[winner][1])
+        visible = []
+        for word in caption["words"]:
+            if word["start_ms"] is None:
+                visible.append(word)
+            elif word["end_ms"] > left and word["start_ms"] < right:
+                visible.append(
+                    {**word, "start_ms": max(left, word["start_ms"]), "end_ms": min(right, word["end_ms"])}
+                )
+        if not visible:
+            continue
+        if counts[winner] > 1:
+            caption["id"] = _identity(
+                "caption", caption["id"], left - source_offset_ms, right - source_offset_ms
+            )
+        caption.update(start_ms=left, end_ms=right, words=visible)
+        if caption["emphasis_word_id"] not in {word["word_id"] for word in visible}:
+            caption["emphasis_word_id"] = None
+        captions.append(caption)
+    return captions
+
+
 def canonicalize_plan(
     plan: dict,
     words: list[dict],
@@ -153,6 +203,7 @@ def canonicalize_plan(
 ) -> dict:
     """Derive captions and duration; source anchors keep edits attached to occurrences."""
     canonical = Plan.model_validate(plan).model_dump()
+    canonical["caption_style"]["preset"] = "spoken_outline"
     sources = {key: _record(value) for key, value in sources.items()}
     index = _words(words, sources)
     takes = None if takes is None else {key: _record(value) for key, value in takes.items()}
@@ -195,6 +246,7 @@ def canonicalize_plan(
     captions, offset = [], 0
     for clip in canonical["clips"]:
         start, end = clip["source_start_ms"], clip["source_end_ms"]
+        candidates = []
         clip_edits = [edit for edit in canonical["caption_edits"] if edit["clip_id"] == clip["id"]]
         for edit in clip_edits:
             refs = set(edit["replaces_word_ids"]) | {
@@ -232,30 +284,61 @@ def canonicalize_plan(
         for chunk in _caption_chunks(visible):
             focused = next((word["id"] for word in chunk if word["id"] in emphasis), None)
             focused = focused or max(chunk, key=lambda word: len(word["text"].strip(".,!?;:")))["id"]
-            captions.append(
-                {
-                    "id": _identity("caption", clip["id"], *(word["id"] for word in chunk)),
-                    "clip_id": clip["id"],
-                    "start_ms": offset + chunk[0]["start_ms"] - start,
-                    "end_ms": offset + max(word["end_ms"] for word in chunk) - start,
-                    "words": [{"word_id": word["id"], "text": word["text"].strip()} for word in chunk],
-                    "emphasis_word_id": focused,
-                }
+            candidates.append(
+                (
+                    0,
+                    {
+                        "id": _identity("caption", clip["id"], *(word["id"] for word in chunk)),
+                        "clip_id": clip["id"],
+                        "start_ms": offset + chunk[0]["start_ms"] - start,
+                        "end_ms": offset + max(word["end_ms"] for word in chunk) - start,
+                        "words": [
+                            {
+                                "word_id": word["id"],
+                                "text": word["text"].strip(),
+                                "start_ms": offset + word["start_ms"] - start,
+                                "end_ms": offset + word["end_ms"] - start,
+                            }
+                            for word in chunk
+                        ],
+                        "emphasis_word_id": focused,
+                    },
+                )
             )
-        for edit in clip_edits:
+        for priority, edit in enumerate(clip_edits, 1):
             left, right = max(start, edit["source_start_ms"]), min(end, edit["source_end_ms"])
-            if edit["deleted"] or left >= right:
+            if left >= right:
                 continue
-            captions.append(
-                {
-                    "id": edit["id"],
-                    "clip_id": clip["id"],
-                    "start_ms": offset + left - start,
-                    "end_ms": offset + right - start,
-                    "words": deepcopy(edit["words"]),
-                    "emphasis_word_id": edit["emphasis_word_id"],
-                }
+            timed_words = []
+            for word in [] if edit["deleted"] else edit["words"]:
+                aligned = index.get(word["word_id"])
+                word_start = max(left, aligned["start_ms"]) if aligned else right
+                word_end = min(right, aligned["end_ms"]) if aligned else left
+                if aligned and word_start >= word_end:
+                    continue
+                timed_words.append(
+                    {
+                        **word,
+                        "start_ms": offset + word_start - start if word_start < word_end else None,
+                        "end_ms": offset + word_end - start if word_start < word_end else None,
+                    }
+                )
+            if not timed_words and not edit["deleted"]:
+                continue
+            candidates.append(
+                (
+                    priority,
+                    {
+                        "id": edit["id"],
+                        "clip_id": clip["id"],
+                        "start_ms": offset + left - start,
+                        "end_ms": offset + right - start,
+                        "words": timed_words,
+                        "emphasis_word_id": edit["emphasis_word_id"],
+                    },
+                )
             )
+        captions.extend(_caption_lane(candidates, offset - start))
         offset += end - start
     canonical["duration_ms"] = offset
     canonical["target_met"] = offset <= canonical["target_duration_ms"]

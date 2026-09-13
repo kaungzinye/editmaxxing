@@ -121,11 +121,11 @@ Verify thumbnail generation and Photos APIs against the installed Expo SDK. Nati
 
 ## Text layout
 
-Start with white heavy captions in a translucent rounded dark box. Use three or four words per chunk, with shorter chunks at punctuation and pauses. Aim for one to two seconds per chunk. Astra selects one existing word for static emphasis.
+Use heavy white TikTok Sans captions with a black outline and a transparent background. Highlight the currently spoken word in yellow using its transcript timestamps. Use three or four words per chunk, with shorter chunks at punctuation and pauses. Aim for one to two seconds per chunk. Captions share one lane; creator edits take priority during their anchored intervals, and later stored edits take priority when manual ranges overlap. Creator text with a null transcript word ID stays white.
 
 Reserve approximately 270 px at the top, 480 px at the bottom, and 140 px on the right of the 1080x1920 canvas. These are layout assumptions to validate against the destination app UI.
 
-Place the hook in the upper middle. The default hold is 12 seconds with a 300 ms fade, clamped to output duration. The creator can change the title text and duration, reposition it, or delete it. Place captions above the bottom reserved area. Store text positions as normalized canvas coordinates. Bundle the same font for app and render. Compare rounded-box output visually, since basic ASS boxes use square corners.
+Place the hook title in a translucent rounded dark box in the upper middle. The default hold is 12 seconds with a 300 ms fade, clamped to output duration. The creator can change the title text and duration, reposition it, or delete it. Place captions above the bottom reserved area. Store text positions as normalized canvas coordinates. Bundle the same font for app and render. Inspect title corners, caption outlines, and spoken-word transitions in rendered frames.
 
 ## Ownership and checkpoints
 

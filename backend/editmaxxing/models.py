@@ -89,12 +89,25 @@ class CaptionWord(Model):
     text: str = Field(min_length=1, max_length=200)
 
 
+class TimedCaptionWord(CaptionWord):
+    start_ms: Millis | None = None
+    end_ms: Millis | None = None
+
+    @model_validator(mode="after")
+    def range_valid(self):
+        if (self.start_ms is None) != (self.end_ms is None):
+            raise ValueError("Caption word timing needs both endpoints")
+        if self.start_ms is not None and self.start_ms >= self.end_ms:
+            raise ValueError("Caption word range must have positive duration")
+        return self
+
+
 class Caption(Model):
     id: Id
     clip_id: Id
     start_ms: Millis
     end_ms: Millis
-    words: list[CaptionWord] = Field(min_length=1, max_length=24)
+    words: list[TimedCaptionWord] = Field(min_length=1, max_length=24)
     emphasis_word_id: str | None = None
 
 
@@ -129,7 +142,7 @@ class Audio(Model):
 
 
 class CaptionStyle(Model):
-    preset: Literal["classic_box"] = "classic_box"
+    preset: Literal["spoken_outline", "classic_box"] = "spoken_outline"
     position: Position = Field(default_factory=Position)
 
 

@@ -6,15 +6,16 @@
 
 | Run | Recorded result | Evidence |
 | --- | --- | --- |
-| Backend suite | 72 tests pass in 13.71 seconds | `uv run pytest backend/tests -q`; named tests below |
+| Backend suite | 82 tests pass in 16.19 seconds | `uv run pytest backend/tests -q`; named tests below |
 | Python lint | Pass | `uv run ruff check backend scripts` |
 | Live provider | 32 body words, four body takes, four spoken hooks, 16 evidence-valid titles, four recorded hook matches; 52.0 seconds | Local `artifacts/provider-live/report.json` |
 | Live HTTP pipeline | 17 checks pass in 100.1 seconds; two drafts and one export downloaded | Local `artifacts/api-smoke-live/report.json` |
 | Railway live HTTP pipeline | 17 checks pass in 103.7 seconds; real Whisper/Astra, two drafts, and one 1080p export | Local `artifacts/railway-smoke/report.json` |
+| Caption export | 1080x1920 export with outlined text, timed yellow words, and one caption lane at 2.61 seconds | Local `artifacts/railway-smoke/captions-fixed-local/report.json` |
 | Railway restart recovery | Saved revision 2, both original checksums, and all three render checksums persist through a dashboard restart | Local `artifacts/railway-smoke/persistence-report.json` |
 | Fixture HTTP pipeline | 17 checks pass in 27.6 seconds | Local `artifacts/api-smoke-fixture-v2/report.json` |
 | Container | Health, mounted-storage recovery after restart, one worker, and TikTok Sans pass | Local `artifacts/provider-live/container-report.json` |
-| Expo client | TypeScript, six tests, web export, and Expo dependency check pass; browser health request to Railway returns 200 | `clients/endpoint-lab`; [client commands](CLIENT.md#verification) |
+| Expo client | TypeScript, nine tests, web export, and Expo dependency check pass; browser health request to Railway returns 200 | `clients/endpoint-lab`; [client commands](CLIENT.md#verification) |
 | Native extraction core | Zero sample shift; 48,000 reference samples and 48,064 decoded AAC samples; 200 ms source delay preserved | `python3 clients/endpoint-lab/scripts/probe-native-audio.py`; [timing evidence](CLIENT.md#native-extraction-contract-and-evidence) |
 
 The artifact directories are local and ignored by Git. The checked-in [smoke command](../scripts/smoke.py), [source-backed fixture](../fixtures/project.json), and [media generator](../scripts/generate_media_fixture.py) reproduce the checks. Recovery tokens stay in local permission-restricted session files.
@@ -28,6 +29,7 @@ The artifact directories are local and ignored by Git. The checked-in [smoke com
 | Edit body while hooks process; hook first in each output | `test_hooks_attach_to_current_body_and_render_captures_snapshot`, editing hook-prepend test, and live smoke preserve the saved body. Media pixel checks distinguish the leading hook and following body. | Production timeline preview and hook switching on a phone. |
 | Selected combinations share one body and produce separate MP4s | API accepts unique subsets of up to 16 combinations. Live smoke downloads two 540x960 drafts and one 1080x1920 export, all H.264/AAC at 30 fps. | Sixteen-output batch throughput and production selection UI. |
 | Trims, reorder, manual titles, captions, additions, and deletions survive save/render | Editing tests cover repeated occurrences, range clamps, overrides, additions, deletions, and hook offsets. Live smoke saves and reloads trim/reorder/manual-caption changes. Worker ranking test preserves creator title and caption state. | Production gesture behavior and phone preview parity. |
+| Captions use transparent backgrounds, white text, black outlines, and spoken-word highlights | Rendered pixel tests verify outlines, visible video around glyphs, yellow word transitions, all-white gaps, and the exact 2-second clip boundary. Editing tests reproduce the synthetic manual/automatic collision at 2.61 seconds and verify a single caption lane. | Representative speech timing and production phone preview parity. |
 | Audio-first draft while original transfers; export waits for media | `test_audio_first_plan_and_revision_conflict` opens a plan with video pending and checks `media_pending`. Live smoke proves this ordering. Lab audio and original controls run independently. | Draft playback against durable local phone media during upload. |
 | AI completion preserves edits and proposes revision-bound changes | API race test checks a result arriving after manual editing. Worker cancellation test blocks result publication after cancellation. Rank snapshot test preserves captured edits and rejects stale application. | Production proposal review UI. |
 | Target changes retain dropped material and report actual duration | Whole-line ranking and rank snapshot tests preserve source order, dropped text, hook duration allowance, and target bounds. The canonical plan derives duration. | Editorial quality and latency with representative 90–180 second finished videos. |

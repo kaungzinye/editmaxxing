@@ -81,15 +81,72 @@ test('upload acknowledgement preserves audio prepared during the upload request'
   assert.deepEqual(extracted, saved);
 });
 
-test('draft captions follow reordered clip occurrences and clamp to a trim', async () => {
+test('draft captions and spoken words follow reordered clip occurrences and clamp to trims', async () => {
   const { remapDraftCaptions } = await import('../src/editor');
   const previous = { clips: [
     { id: 'a', source_start_ms: 0, source_end_ms: 1000 },
     { id: 'b', source_start_ms: 1000, source_end_ms: 2000 },
-  ], captions: [{ id: 'caption', clip_id: 'a', start_ms: 100, end_ms: 500 }], target_duration_ms: 120000 } as import('../../../contracts/plan').Plan;
+  ], captions: [{ id: 'caption', clip_id: 'a', start_ms: 100, end_ms: 500, words: [
+    { word_id: 'one', text: 'one', start_ms: 100, end_ms: 180 },
+    { word_id: 'two', text: 'two', start_ms: 180, end_ms: 300 },
+    { word_id: 'three', text: 'three', start_ms: 300, end_ms: 500 },
+    { word_id: null, text: 'creator text', start_ms: null, end_ms: null },
+  ] }], target_duration_ms: 120000 } as import('../../../contracts/plan').Plan;
   const reordered = remapDraftCaptions(previous, { ...previous, clips: [...previous.clips].reverse() });
   assert.equal(reordered.captions[0].start_ms, 1100);
+  assert.deepEqual(reordered.captions[0].words.map(word => [word.start_ms, word.end_ms]), [[1100, 1180], [1180, 1300], [1300, 1500], [null, null]]);
   const trimmed = remapDraftCaptions(reordered, { ...reordered, clips: reordered.clips.map(c => c.id === 'a' ? { ...c, source_start_ms: 200 } : c) });
   assert.equal(trimmed.captions[0].start_ms, 1000);
   assert.equal(trimmed.captions[0].end_ms, 1300);
+  assert.deepEqual(trimmed.captions[0].words, [
+    { word_id: 'two', text: 'two', start_ms: 1000, end_ms: 1100 },
+    { word_id: 'three', text: 'three', start_ms: 1100, end_ms: 1300 },
+    { word_id: null, text: 'creator text', start_ms: null, end_ms: null },
+  ]);
+  const endTrimmed = remapDraftCaptions(trimmed, { ...trimmed, clips: trimmed.clips.map(c => c.id === 'a' ? { ...c, source_end_ms: 350 } : c) });
+  assert.equal(endTrimmed.captions[0].end_ms, 1150);
+  assert.equal(endTrimmed.captions[0].words[1].end_ms, 1150);
+});
+
+test('repeated source ranges retain each caption word occurrence on the timeline', async () => {
+  const { remapDraftCaptions } = await import('../src/editor');
+  const previous = { clips: [
+    { id: 'first', source_id: 'body', source_start_ms: 2000, source_end_ms: 3000 },
+    { id: 'repeat', source_id: 'body', source_start_ms: 2000, source_end_ms: 3000 },
+  ], captions: [
+    { id: 'first-caption', clip_id: 'first', start_ms: 100, end_ms: 500, words: [{ word_id: 'hello', text: 'hello', start_ms: 100, end_ms: 500 }] },
+    { id: 'repeat-caption', clip_id: 'repeat', start_ms: 1100, end_ms: 1500, words: [{ word_id: 'hello', text: 'hello', start_ms: 1100, end_ms: 1500 }] },
+  ], target_duration_ms: 120000 } as import('../../../contracts/plan').Plan;
+  const reordered = remapDraftCaptions(previous, { ...previous, clips: [...previous.clips].reverse() });
+  assert.equal(reordered.captions.find(caption => caption.clip_id === 'repeat')?.words[0].start_ms, 100);
+  assert.equal(reordered.captions.find(caption => caption.clip_id === 'first')?.words[0].start_ms, 1100);
+  const removed = remapDraftCaptions(reordered, { ...reordered, clips: reordered.clips.filter(clip => clip.id === 'first') });
+  assert.equal(removed.captions.length, 1);
+  assert.equal(removed.captions[0].words[0].start_ms, 100);
+});
+
+test('a cue leaves the draft when a trim removes every spoken word', async () => {
+  const { remapDraftCaptions } = await import('../src/editor');
+  const previous = { clips: [{ id: 'a', source_start_ms: 0, source_end_ms: 1000 }], captions: [
+    { id: 'caption', clip_id: 'a', start_ms: 100, end_ms: 500, words: [{ word_id: 'hello', text: 'hello', start_ms: 100, end_ms: 300 }] },
+  ], target_duration_ms: 120000 } as import('../../../contracts/plan').Plan;
+  const trimmed = remapDraftCaptions(previous, { ...previous, clips: [{ ...previous.clips[0], source_start_ms: 350 }] });
+  assert.deepEqual(trimmed.captions, []);
+});
+
+test('stored caption words with absent timestamps receive null timing on remap', async () => {
+  const { remapDraftCaptions } = await import('../src/editor');
+  const previous = { clips: [
+    { id: 'a', source_start_ms: 0, source_end_ms: 1000 },
+    { id: 'b', source_start_ms: 1000, source_end_ms: 2000 },
+  ], captions: [{ id: 'caption', clip_id: 'a', start_ms: 100, end_ms: 500, words: [
+    { word_id: 'hello', text: 'hello' },
+    { word_id: null, text: 'creator text', start_ms: null, end_ms: null },
+  ] }], target_duration_ms: 120000 } as import('../../../contracts/plan').Plan;
+  const reordered = remapDraftCaptions(previous, { ...previous, clips: [...previous.clips].reverse() });
+  assert.equal(reordered.captions[0].start_ms, 1100);
+  assert.deepEqual(reordered.captions[0].words, [
+    { word_id: 'hello', text: 'hello', start_ms: null, end_ms: null },
+    { word_id: null, text: 'creator text', start_ms: null, end_ms: null },
+  ]);
 });

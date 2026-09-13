@@ -83,7 +83,7 @@ npm run export
 npx expo install --check
 ```
 
-The six tests verify acknowledged-part resume, checksum mismatch rejection, preserved 409 response details, browser fetch binding, concurrent audio preparation and upload journaling, and caption timing after clip reorder and trim. The real-backend smoke command accepts prepared fixture media and a fixture-enabled API:
+The nine tests verify acknowledged-part resume, checksum mismatch rejection, preserved 409 response details, browser fetch binding, concurrent audio preparation and upload journaling, and caption timing after clip reorder and trim. Caption checks cover per-word timestamps, repeated source occurrences, removal of empty cues, and stored words with null timing. The real-backend smoke command accepts prepared fixture media and a fixture-enabled API:
 
 ```sh
 npm run smoke -- http://localhost:8012 /path/to/original.mov /path/to/audio.m4a 3000
@@ -91,4 +91,4 @@ npm run smoke -- http://localhost:8012 /path/to/original.mov /path/to/audio.m4a 
 
 It registers body and hooks sources, uploads both media kinds, saves a body trim, checks that hook analysis preserves body clips, renders a selected hook plus body, and downloads the MP4 to `/tmp/editmaxxing-endpoint-smoke.mp4`. Synthetic fixture analysis is explicit in this command.
 
-The 13 September verification passes TypeScript, all six client tests, web export, dependency checks, and the smoke flow against a fresh local API. Apple autolinking resolves `SourceAudio`; the generated CocoaPods provider imports its Swift module for debug and release builds. The full native build remains gated by the displayed Xcode SDK agreement.
+The 13 September verification passes TypeScript, all nine client tests, web export, dependency checks, and the smoke flow against a fresh local API. Apple autolinking resolves `SourceAudio`; the generated CocoaPods provider imports its Swift module for debug and release builds. The full native build remains gated by the displayed Xcode SDK agreement.

@@ -60,12 +60,14 @@ export interface Clip {
   selection_reason: string;
 }
 export interface CaptionWord { word_id: string | null; text: string }
+/** Word timing uses assembled timeline milliseconds; unmatched creator text has null timing. */
+export interface TimedCaptionWord extends CaptionWord { start_ms: Millis | null; end_ms: Millis | null }
 export interface Caption {
   id: string;
   clip_id: string;
   start_ms: Millis;
   end_ms: Millis;
-  words: CaptionWord[];
+  words: TimedCaptionWord[];
   emphasis_word_id: string | null;
 }
 /** A manual edit anchors to one clip occurrence and canonical source time. */
@@ -98,7 +100,7 @@ export interface Plan {
   dead_space: { enabled: boolean; threshold_ms: 700; retain_ms: 250 };
   hook_overlay: Overlay | null;
   audio: { normalization_enabled: boolean; preset: "speech_consistent" };
-  caption_style: { preset: "classic_box"; position: Position };
+  caption_style: { preset: "spoken_outline" | "classic_box"; position: Position };
   captions: Caption[];
   caption_edits: CaptionEdit[];
 }

@@ -12,6 +12,7 @@ import tempfile
 import wave
 from array import array
 from hashlib import sha256
+from itertools import pairwise
 from pathlib import Path
 
 from PIL import ImageFont
@@ -410,11 +411,11 @@ def _rounded_path(width: int, height: int, radius: int = 22) -> str:
 
 
 def _text_block(
-    words: list[dict], emphasis: str | None, position: dict, *, title: bool = False
+    words: list[dict], active_word_id: str | None, position: dict, *, title: bool = False
 ) -> tuple[str, str, int]:
     size, max_width = (70 if title else 62), 840
     tokens = [
-        (part, word.get("word_id") is not None and word.get("word_id") == emphasis)
+        (part, word.get("word_id") is not None and word.get("word_id") == active_word_id)
         for word in words
         for part in word["text"].split()
     ]
@@ -449,7 +450,11 @@ def _text_block(
     height = min(1900, len(lines) * line_height + 30)
     cx = min(1080 - width / 2 - 10, max(width / 2 + 10, position["x"] * 1080))
     cy = min(1920 - height / 2 - 10, max(height / 2 + 10, position["y"] * 1920))
-    background = f"{{\\an7\\pos({cx - width / 2:.1f},{cy - height / 2:.1f})\\p1\\bord0\\shad0\\1c&H000000&\\1a&H65&}}{_rounded_path(width, height)}{{\\p0}}"
+    background = (
+        f"{{\\an7\\pos({cx - width / 2:.1f},{cy - height / 2:.1f})\\p1\\bord0\\shad0\\1c&H000000&\\1a&H65&}}{_rounded_path(width, height)}{{\\p0}}"
+        if title
+        else ""
+    )
     text = "\\N".join(
         " ".join(
             ("{\\1c&H69E8FF&}" if focused else "{\\1c&HFFFFFF&}") + _escape_ass(word)
@@ -457,11 +462,12 @@ def _text_block(
         )
         for line, _ in lines
     )
-    foreground = f"{{\\an5\\pos({cx:.1f},{cy:.1f})\\fs{size}\\bord0\\shad0\\1a&H00&}}{text}"
+    border = 0 if title else 4
+    foreground = f"{{\\an5\\pos({cx:.1f},{cy:.1f})\\fs{size}\\bord{border}\\3c&H000000&\\3a&H00&\\shad0\\1a&H00&}}{text}"
     return background, foreground, size
 
 
-def write_subtitles(plan: dict, path: str | Path) -> Path:
+def write_subtitles(plan: dict, path: str | Path, *, clip_id: str | None = None) -> Path:
     header = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -482,7 +488,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start: int,
         end: int,
         words: list[dict],
-        emphasis: str | None,
+        active_word_id: str | None,
         position: dict,
         title: bool = False,
         fade_ms: int = 0,
@@ -490,7 +496,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         end = min(plan["duration_ms"], end)
         if start >= end:
             return
-        background, foreground, _ = _text_block(words, emphasis, position, title=title)
+        if _ass_time(start) == _ass_time(end):
+            return
+        background, foreground, _ = _text_block(words, active_word_id, position, title=title)
         fade = f"{{\\fad(0,{min(fade_ms, end - start)})}}" if fade_ms else ""
         for layer, text in ((0, background), (1, foreground)):
             if text:
@@ -498,14 +506,48 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     f"Dialogue: {layer},{_ass_time(start)},{_ass_time(end)},Text,,0,0,0,,{fade}{text}"
                 )
 
+    clip_windows, cursor_ms = {}, 0
+    for clip in plan.get("clips", []):
+        end_ms = cursor_ms + clip["source_end_ms"] - clip["source_start_ms"]
+        clip_windows[clip["id"]] = (cursor_ms, end_ms)
+        cursor_ms = end_ms
     for caption in plan.get("captions", []):
-        add(
-            caption["start_ms"],
-            caption["end_ms"],
-            caption["words"],
-            caption.get("emphasis_word_id"),
-            plan["caption_style"]["position"],
+        if clip_id is not None and caption["clip_id"] != clip_id:
+            continue
+        window_start, window_end = clip_windows.get(caption["clip_id"], (0, plan["duration_ms"]))
+        start = max(caption["start_ms"], window_start)
+        end = min(caption["end_ms"], window_end, plan["duration_ms"])
+        if start >= end:
+            continue
+        aligned_words = [
+            word
+            for word in caption["words"]
+            if word.get("word_id") is not None
+            and word.get("start_ms") is not None
+            and word.get("end_ms") is not None
+            and word["start_ms"] < word["end_ms"]
+        ]
+        boundaries = sorted(
+            {start, end}
+            | {
+                max(start, min(end, word[boundary]))
+                for word in aligned_words
+                for boundary in ("start_ms", "end_ms")
+            }
         )
+        for begin, finish in pairwise(boundaries):
+            active = max(
+                (word for word in aligned_words if word["start_ms"] <= begin < word["end_ms"]),
+                key=lambda word: word["start_ms"],
+                default=None,
+            )
+            add(
+                begin,
+                finish,
+                caption["words"],
+                active["word_id"] if active else None,
+                plan["caption_style"]["position"],
+            )
     overlay = plan.get("hook_overlay")
     if overlay and overlay.get("text", "").strip():
         add(
@@ -565,7 +607,6 @@ def render_plan(plan: dict, sources: dict[str, dict], output_path: str | Path, k
     gains = {"body": 0.0, "hook": 0.0}
     with tempfile.TemporaryDirectory(prefix="render-", dir=output.parent) as directory:
         work = Path(directory)
-        subtitles = write_subtitles(plan, work / "captions.ass")
         audio_paths, video_paths = [], []
         role_energy = {"body": [0.0, 0], "hook": [0.0, 0]}
         for number, clip in enumerate(clips):
@@ -660,6 +701,7 @@ def render_plan(plan: dict, sources: dict[str, dict], output_path: str | Path, k
                 next_cursor = max(1, next_cursor)
             frames = next_cursor - frame_cursor
             if frames > 0:
+                subtitles = write_subtitles(plan, work / f"captions-{number:04d}.ass", clip_id=clip["id"])
                 video_path = work / f"video-{number:04d}.mp4"
                 video_paths.append(video_path)
                 source_path = sources[clip["source_id"]]["editing_path"]

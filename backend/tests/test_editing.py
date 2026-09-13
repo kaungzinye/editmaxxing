@@ -1,4 +1,5 @@
 from copy import deepcopy
+from itertools import pairwise
 
 import pytest
 from editmaxxing.editing import (
@@ -45,6 +46,18 @@ def clip(id="c1", source="body", start=900, end=3100, role="body", take_id="take
         "source_end_ms": end,
         "selection_reason": "Creator selection",
     }
+
+
+def assert_caption_lane(captions):
+    for previous, following in pairwise(captions):
+        assert previous["end_ms"] <= following["start_ms"]
+    for caption in captions:
+        assert caption["start_ms"] < caption["end_ms"]
+        for token in caption["words"]:
+            if token["start_ms"] is None:
+                assert token["end_ms"] is None
+            else:
+                assert caption["start_ms"] <= token["start_ms"] < token["end_ms"] <= caption["end_ms"]
 
 
 def test_silence_split_retains_250ms_and_pads_clear_boundaries():
@@ -123,7 +136,13 @@ def test_captions_map_half_open_ranges_and_occurrence_offsets():
         ("repeat", 1600, 2100),
     ]
     assert [w["text"] for w in result["captions"][1]["words"]] == ["First", "sentence."]
+    assert [[(w["start_ms"], w["end_ms"]) for w in c["words"]] for c in result["captions"]] == [
+        [(0, 500), (700, 800)],
+        [(800, 1000), (1100, 1300)],
+        [(1600, 1800), (1900, 2100)],
+    ]
     assert len({c["id"] for c in result["captions"]}) == 3
+    assert_caption_lane(result["captions"])
 
 
 def test_manual_override_addition_and_deletion_survive_reorder_trim_and_removal():
@@ -159,7 +178,11 @@ def test_manual_override_addition_and_deletion_survive_reorder_trim_and_removal(
     assert [
         (c["id"], c["start_ms"], c["end_ms"]) for c in result["captions"] if c["id"] in {"manual", "addition"}
     ] == [("manual", 900, 1250), ("addition", 1300, 1500)]
-    assert result["captions"][0]["words"] == [{"word_id": "w1", "text": "word1"}]
+    assert result["captions"][0]["words"] == [
+        {"word_id": "w1", "text": "word1", "start_ms": 100, "end_ms": 300}
+    ]
+    manual = next(c for c in result["captions"] if c["id"] == "manual")
+    assert manual["words"] == [{"word_id": None, "text": "Creator text", "start_ms": None, "end_ms": None}]
     result["clips"].reverse()
     second = canonicalize_plan(result, words, source)
     assert next(c for c in second["captions"] if c["id"] == "manual")["start_ms"] == 0
@@ -209,6 +232,9 @@ def test_hook_prepend_preserves_saved_body_and_recalculates_caption_offsets():
     assert result["revision"] == 7
     body_caption = next(c for c in result["captions"] if c["clip_id"] == "c1")
     assert body_caption["start_ms"] == 800
+    assert [(w["start_ms"], w["end_ms"]) for w in body_caption["words"]] == [(800, 950), (1050, 1250)]
+    hook_caption = result["captions"][0]
+    assert [(w["start_ms"], w["end_ms"]) for w in hook_caption["words"]] == [(150, 650)]
     assert result["hook_overlay"]["text"] == "Watch this"
     result["clips"][0]["source_start_ms"] += 100
     result["hook_overlay"] = None
@@ -223,6 +249,259 @@ def test_hook_prepend_preserves_saved_body_and_recalculates_caption_offsets():
     )
     assert again["clips"] == result["clips"]
     assert again["hook_overlay"] is None
+    assert [(w["start_ms"], w["end_ms"]) for w in again["captions"][0]["words"]] == [(50, 550)]
+    shifted_body = next(c for c in again["captions"] if c["clip_id"] == "c1")
+    assert [(w["start_ms"], w["end_ms"]) for w in shifted_body["words"]] == [(700, 850), (950, 1150)]
+    assert [(w["start_ms"], w["end_ms"]) for w in plan["captions"][0]["words"]] == [(0, 150), (250, 450)]
+    assert_caption_lane(again["captions"])
+
+
+def test_manual_caption_owns_its_range_and_preserves_spoken_tail_after_hook():
+    words = [
+        word(1, 2160, 2420, text="the"),
+        word(2, 2420, 2660, text="long"),
+        word(3, 2660, 2920, text="pauses"),
+        word(4, 2920, 3280, text="between"),
+        word(5, 3280, 3540, text="your"),
+        word(6, 3540, 3960, text="ideas"),
+        word(7, 0, 2460, source="hooks", text="Hook."),
+    ]
+    plan = Plan().model_dump()
+    plan["clips"] = [clip("body_clip", start=2190, end=4110)]
+    plan["caption_edits"] = [
+        {
+            "id": "manual_smoke",
+            "clip_id": "body_clip",
+            "source_start_ms": 2190,
+            "source_end_ms": 3190,
+            "replaces_word_ids": [],
+            "words": [{"word_id": None, "text": "Synthetic"}, {"word_id": None, "text": "review"}],
+        }
+    ]
+    sources = {"body": {"duration_ms": 5000}, "hooks": {"duration_ms": 3000}}
+    body = canonicalize_plan(plan, words, sources)
+    assert body["caption_style"]["preset"] == "spoken_outline"
+    assert [(c["start_ms"], c["end_ms"], [w["text"] for w in c["words"]]) for c in body["captions"]] == [
+        (0, 1000, ["Synthetic", "review"]),
+        (1000, 1090, ["between"]),
+        (1090, 1770, ["your", "ideas"]),
+    ]
+    assert body["captions"][1]["words"] == [
+        {"word_id": "w4", "text": "between", "start_ms": 1000, "end_ms": 1090}
+    ]
+    hook = {
+        "id": "hook1",
+        "take_id": "hooktake",
+        "clips": [clip("hook_clip", source="hooks", start=0, end=2610, role="hook", take_id="hooktake")],
+    }
+    assembled = assemble_combination(
+        body, hook, None, {"id": "combo1", "hook_id": "hook1", "use_title": False}, words, sources
+    )
+    body_captions = [c for c in assembled["captions"] if c["clip_id"] == "body_clip"]
+    assert [(c["start_ms"], c["end_ms"]) for c in body_captions] == [(2610, 3610), (3610, 3700), (3700, 4380)]
+    assert body_captions[1]["words"] == [
+        {"word_id": "w4", "text": "between", "start_ms": 3610, "end_ms": 3700}
+    ]
+    assert all(w["start_ms"] is None and w["end_ms"] is None for w in body_captions[0]["words"])
+    assert_caption_lane(assembled["captions"])
+
+
+def test_later_manual_caption_wins_and_splits_earlier_manual_and_automatic_cues():
+    words = [
+        word(1, 0, 300, text="Before."),
+        word(2, 300, 900, text="Middle."),
+        word(3, 900, 1200, text="After."),
+    ]
+    plan = Plan().model_dump()
+    plan["clips"] = [clip(start=0, end=1200)]
+    plan["caption_edits"] = [
+        {
+            "id": "wide",
+            "clip_id": "c1",
+            "source_start_ms": 200,
+            "source_end_ms": 1000,
+            "words": [{"word_id": None, "text": "Wide edit"}],
+        },
+        {
+            "id": "focused",
+            "clip_id": "c1",
+            "source_start_ms": 400,
+            "source_end_ms": 600,
+            "words": [{"word_id": None, "text": "Focused edit"}],
+        },
+    ]
+    result = canonicalize_plan(plan, words, {"body": {"duration_ms": 2000}})
+    assert [(c["start_ms"], c["end_ms"], [w["text"] for w in c["words"]]) for c in result["captions"]] == [
+        (0, 200, ["Before."]),
+        (200, 400, ["Wide edit"]),
+        (400, 600, ["Focused edit"]),
+        (600, 1000, ["Wide edit"]),
+        (1000, 1200, ["After."]),
+    ]
+    assert len({c["id"] for c in result["captions"]}) == len(result["captions"])
+    assert_caption_lane(result["captions"])
+    plan["caption_edits"].reverse()
+    reversed_result = canonicalize_plan(plan, words, {"body": {"duration_ms": 2000}})
+    assert [
+        (c["start_ms"], c["end_ms"], [w["text"] for w in c["words"]]) for c in reversed_result["captions"]
+    ] == [
+        (0, 200, ["Before."]),
+        (200, 1000, ["Wide edit"]),
+        (1000, 1200, ["After."]),
+    ]
+
+
+def test_source_linked_manual_words_clamp_to_edit_and_clip_timing():
+    words = [word(1, 1000, 1400), word(2, 1400, 1800), word(3, 1900, 2000)]
+    plan = Plan().model_dump()
+    plan["clips"] = [clip("lead", start=0, end=100), clip("manual_clip", start=1150, end=1700)]
+    plan["caption_edits"] = [
+        {
+            "id": "linked",
+            "clip_id": "manual_clip",
+            "source_start_ms": 1100,
+            "source_end_ms": 1600,
+            "replaces_word_ids": ["w1", "w2", "w3"],
+            "words": [
+                {"word_id": "w1", "text": "Corrected"},
+                {"word_id": "w2", "text": "speech"},
+                {"word_id": "w3", "text": "Outside"},
+                {"word_id": None, "text": "annotation"},
+            ],
+        }
+    ]
+    result = canonicalize_plan(plan, words, {"body": {"duration_ms": 3000}})
+    manual = next(c for c in result["captions"] if c["id"] == "linked")
+    assert (manual["start_ms"], manual["end_ms"]) == (100, 550)
+    assert manual["words"] == [
+        {"word_id": "w1", "text": "Corrected", "start_ms": 100, "end_ms": 350},
+        {"word_id": "w2", "text": "speech", "start_ms": 350, "end_ms": 550},
+        {"word_id": None, "text": "annotation", "start_ms": None, "end_ms": None},
+    ]
+    assert_caption_lane(result["captions"])
+
+
+def test_manual_conflict_clips_linked_words_to_their_winning_intervals():
+    words = [word(1, 0, 500), word(2, 500, 1000)]
+    plan = Plan().model_dump()
+    plan["clips"] = [clip(start=0, end=1000)]
+    plan["caption_edits"] = [
+        {
+            "id": "linked",
+            "clip_id": "c1",
+            "source_start_ms": 0,
+            "source_end_ms": 1000,
+            "replaces_word_ids": ["w1", "w2"],
+            "words": [{"word_id": "w1", "text": "One"}, {"word_id": "w2", "text": "Two"}],
+        },
+        {
+            "id": "insertion",
+            "clip_id": "c1",
+            "source_start_ms": 400,
+            "source_end_ms": 600,
+            "words": [{"word_id": None, "text": "Insert"}],
+        },
+    ]
+    sources = {"body": {"duration_ms": 2000}}
+    result = canonicalize_plan(plan, words, sources)
+    assert [(c["start_ms"], c["end_ms"]) for c in result["captions"]] == [(0, 400), (400, 600), (600, 1000)]
+    assert [c["words"] for c in result["captions"]] == [
+        [{"word_id": "w1", "text": "One", "start_ms": 0, "end_ms": 400}],
+        [{"word_id": None, "text": "Insert", "start_ms": None, "end_ms": None}],
+        [{"word_id": "w2", "text": "Two", "start_ms": 600, "end_ms": 1000}],
+    ]
+    assert canonicalize_plan(result, words, sources) == result
+    assert_caption_lane(result["captions"])
+
+
+@pytest.mark.parametrize(
+    "deletion_start,deletion_end,expected_ranges",
+    [(0, 1000, []), (400, 600, [(0, 400), (600, 1000)])],
+)
+def test_later_deletion_owns_full_or_partial_manual_caption_range(
+    deletion_start, deletion_end, expected_ranges
+):
+    plan = Plan().model_dump()
+    plan["clips"] = [clip(start=0, end=1000)]
+    plan["caption_edits"] = [
+        {
+            "id": "manual",
+            "clip_id": "c1",
+            "source_start_ms": 0,
+            "source_end_ms": 1000,
+            "words": [{"word_id": None, "text": "Creator text"}],
+        },
+        {
+            "id": "delete_manual",
+            "clip_id": "c1",
+            "source_start_ms": deletion_start,
+            "source_end_ms": deletion_end,
+            "deleted": True,
+            "words": [],
+        },
+    ]
+    sources = {"body": {"duration_ms": 2000}}
+    words = [word(1, 0, 1000)]
+    result = canonicalize_plan(plan, words, sources)
+    assert [(c["start_ms"], c["end_ms"]) for c in result["captions"]] == expected_ranges
+    assert all(c["words"][0]["text"] == "Creator text" for c in result["captions"])
+    assert canonicalize_plan(result, words, sources) == result
+    assert_caption_lane(result["captions"])
+
+
+def test_manual_caption_and_deletion_anchors_survive_trim_and_reorder():
+    plan = Plan().model_dump()
+    plan["clips"] = [clip("lead", start=1100, end=1300), clip(start=300, end=800)]
+    plan["caption_edits"] = [
+        {
+            "id": "manual",
+            "clip_id": "c1",
+            "source_start_ms": 0,
+            "source_end_ms": 1000,
+            "words": [{"word_id": None, "text": "Creator text"}],
+        },
+        {
+            "id": "delete_middle",
+            "clip_id": "c1",
+            "source_start_ms": 400,
+            "source_end_ms": 600,
+            "deleted": True,
+            "words": [],
+        },
+    ]
+    words, sources = [word(1, 0, 1000)], {"body": {"duration_ms": 2000}}
+    full_range = deepcopy(plan)
+    full_range["clips"][1].update(source_start_ms=0, source_end_ms=1000)
+    before_reorder = canonicalize_plan(full_range, words, sources)
+    trimmed = canonicalize_plan(plan, words, sources)
+    assert [(c["start_ms"], c["end_ms"]) for c in trimmed["captions"]] == [(200, 300), (500, 700)]
+    saved_edits = deepcopy(trimmed["caption_edits"])
+    trimmed["clips"][1].update(source_start_ms=450, source_end_ms=550)
+    within_deletion = canonicalize_plan(trimmed, words, sources)
+    assert within_deletion["captions"] == []
+    within_deletion["clips"].reverse()
+    within_deletion["clips"][0].update(source_start_ms=0, source_end_ms=1000)
+    expanded = canonicalize_plan(within_deletion, words, sources)
+    assert [(c["start_ms"], c["end_ms"]) for c in expanded["captions"]] == [(0, 400), (600, 1000)]
+    assert [c["id"] for c in expanded["captions"]] == [c["id"] for c in before_reorder["captions"]]
+    assert expanded["caption_edits"] == saved_edits
+    assert_caption_lane(expanded["captions"])
+
+
+def test_overlapping_asr_chunks_have_disjoint_cues_and_contained_word_timings():
+    words = [
+        word(1, 0, 800, text="First."),
+        word(2, 400, 600, text="Second."),
+        word(3, 700, 1200, text="Third."),
+        word(4, 1000, 1500, text="Fourth."),
+    ]
+    result = canonicalize_plan(
+        {**Plan().model_dump(), "clips": [clip(start=0, end=1600)]}, words, {"body": {"duration_ms": 2000}}
+    )
+    assert result["captions"]
+    assert result["captions"][0]["start_ms"] == 0
+    assert result["captions"][-1]["end_ms"] == 1500
+    assert_caption_lane(result["captions"])
 
 
 def test_incomplete_title_requires_creator_text_and_title_belongs_to_hook():

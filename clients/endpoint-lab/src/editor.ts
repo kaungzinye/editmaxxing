@@ -1,4 +1,4 @@
-import type { Plan } from '../../../contracts/plan';
+import type { Plan, TimedCaptionWord } from '../../../contracts/plan';
 
 /** Keep displayed caption timing attached to its clip while raw trim controls edit it. */
 export function remapDraftCaptions(previous: Plan, next: Plan): Plan {
@@ -20,7 +20,15 @@ export function remapDraftCaptions(previous: Plan, next: Plan): Plan {
     const start = Math.max(after.start, before.start + caption.start_ms - before.offset);
     const end = Math.min(after.end, before.start + caption.end_ms - before.offset);
     if (end <= start) return [];
-    return [{ ...caption, start_ms: after.offset + start - after.start, end_ms: after.offset + end - after.start }];
+    const words = caption.words.flatMap<TimedCaptionWord>(word => {
+      if (word.start_ms == null || word.end_ms == null) return [{ ...word, start_ms: null, end_ms: null }];
+      const wordStart = Math.max(start, before.start + word.start_ms - before.offset);
+      const wordEnd = Math.min(end, before.start + word.end_ms - before.offset);
+      if (wordEnd <= wordStart) return [];
+      return [{ ...word, start_ms: after.offset + wordStart - after.start, end_ms: after.offset + wordEnd - after.start }];
+    });
+    if (words.length === 0) return [];
+    return [{ ...caption, words, start_ms: after.offset + start - after.start, end_ms: after.offset + end - after.start }];
   });
   return { ...next, captions, duration_ms: offset, target_met: offset <= next.target_duration_ms };
 }

@@ -7,6 +7,7 @@ from array import array
 
 import pytest
 from editmaxxing.media import (
+    FONT_PATH,
     MediaError,
     audio_metrics,
     normalize_audio,
@@ -16,6 +17,7 @@ from editmaxxing.media import (
     write_subtitles,
 )
 from editmaxxing.models import Plan
+from PIL import Image
 
 pytestmark = pytest.mark.skipif(
     not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="ffmpeg and ffprobe are required"
@@ -87,6 +89,34 @@ def clip(id, source, start, end, role="body"):
         "source_end_ms": end,
         "selection_reason": "Fixture",
     }
+
+
+def frame_at(path, milliseconds, size=(540, 960)):
+    process = subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-ss",
+            str(milliseconds / 1000),
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-vf",
+            "format=rgb24",
+            "-f",
+            "rawvideo",
+            "-",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return Image.frombytes("RGB", size, process.stdout)
+
+
+def caption_pixels(frame, predicate):
+    return {(x, y) for y in range(700, 800) for x in range(40, 500) if predicate(*frame.getpixel((x, y)))}
 
 
 def test_canonical_audio_clock_applies_origin_and_delay_at_sample_boundaries(tmp_path):
@@ -257,3 +287,104 @@ def test_subtitle_uses_bundled_tiktok_font_rounded_box_and_clamped_hold(tmp_path
     assert "Style: Text,TikTok Sans," in content
     assert "0:00:02.00" in content and "0:00:12.00" not in content
     assert "\\fad(0,300)" in content and "\\p1" in content
+
+
+def test_rendered_captions_have_black_outline_and_follow_spoken_word_intervals(tmp_path):
+    audio, video, output = (tmp_path / name for name in ("audio.wav", "video.mp4", "captions.mp4"))
+    write_wave(audio, 1200)
+    create_video(video, audio, 1200, "blue")
+    plan = Plan().model_dump()
+    plan.update(clips=[clip("a", "s", 0, 1200)], duration_ms=1200)
+    plan["audio"]["normalization_enabled"] = False
+    plan["caption_style"]["position"] = {"x": 0.5, "y": 0.78}
+    plan["captions"] = [
+        {
+            "id": "caption",
+            "clip_id": "a",
+            "start_ms": 100,
+            "end_ms": 1100,
+            "words": [
+                {"word_id": "w1", "text": "WHITE", "start_ms": 100, "end_ms": 400},
+                {"word_id": "w2", "text": "OUTLINE", "start_ms": 600, "end_ms": 900},
+                {"word_id": None, "text": "TEXT", "start_ms": None, "end_ms": None},
+            ],
+            "emphasis_word_id": "w1",
+        }
+    ]
+    render_plan(
+        plan,
+        {"s": {"duration_ms": 1200, "editing_path": str(video), "audio_path": str(audio)}},
+        output,
+    )
+    frames = {time: frame_at(output, time) for time in (200, 500, 700, 1000, 1150)}
+    yellow = lambda r, g, b: r > 190 and g > 140 and b < 170 and r > b + 45 and g > b + 45
+    first = caption_pixels(frames[200], yellow)
+    second = caption_pixels(frames[700], yellow)
+    assert len(first) > 100 and len(second) > 100
+    assert max(x for x, _ in first) < min(x for x, _ in second)
+    assert not caption_pixels(frames[500], yellow)
+    assert not caption_pixels(frames[1000], yellow)
+    white = caption_pixels(frames[500], lambda r, g, b: min(r, g, b) > 210)
+    black = caption_pixels(frames[500], lambda r, g, b: max(r, g, b) < 45)
+    assert len(white) > 500 and len(black) > 100
+    min_x, max_x = min(x for x, _ in white), max(x for x, _ in white)
+    min_y, max_y = min(y for _, y in white), max(y for _, y in white)
+    # Pixels around the outlined glyphs retain the blue video color.
+    for y in (min_y - 6, max_y + 6):
+        for x in range(min_x - 4, max_x + 5):
+            red, green, blue = frames[500].getpixel((x, y))
+            assert blue > 230 and red < 20 and green < 20
+    # The outline touches the bright letter strokes.
+    assert any((x + dx, y + dy) in white for x, y in black for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2)))
+    assert not caption_pixels(frames[1150], lambda r, g, b: r > 150 or g > 150)
+
+
+def test_rendered_caption_boundaries_show_one_event_after_clip_join(tmp_path):
+    audio, video, output = (tmp_path / name for name in ("audio.wav", "video.mp4", "joined.mp4"))
+    write_wave(audio, 2400)
+    create_video(video, audio, 2400, "blue")
+    plan = Plan().model_dump()
+    plan.update(clips=[clip("a", "s", 0, 1000), clip("b", "s", 1000, 2400)], duration_ms=2400)
+    plan["audio"]["normalization_enabled"] = False
+    plan["caption_style"]["position"] = {"x": 0.5, "y": 0.78}
+    plan["captions"] = [
+        {
+            "id": id,
+            "clip_id": owner,
+            "start_ms": start,
+            "end_ms": end,
+            "words": [{"word_id": id, "text": text, "start_ms": start, "end_ms": end}],
+        }
+        for id, owner, start, end, text in (
+            ("first", "a", 0, 2400, "FIRST CLIP"),
+            ("before", "b", 1000, 2000, "BEFORE"),
+            ("after", "b", 2000, 2400, "AFTER"),
+        )
+    ]
+    source = {"s": {"duration_ms": 2400, "editing_path": str(video), "audio_path": str(audio)}}
+    render_plan(plan, source, output)
+    for timestamp, caption in ((1100, plan["captions"][1]), (2000, plan["captions"][2])):
+        expected = dict(
+            plan, clips=[clip("reference", "s", 0, 2400)], captions=[dict(caption, clip_id="reference")]
+        )
+        subtitle = write_subtitles(expected, tmp_path / "reference.ass")
+        reference = tmp_path / "reference.png"
+        ffmpeg(
+            "-f",
+            "lavfi",
+            "-i",
+            "color=blue:s=540x960:r=30:d=2.4",
+            "-vf",
+            f"subtitles={subtitle}:fontsdir={FONT_PATH.parent}",
+            "-ss",
+            str(timestamp / 1000),
+            "-frames:v",
+            "1",
+            reference,
+        )
+        actual = frame_at(output, timestamp)
+        target = Image.open(reference).convert("RGB")
+        bright = lambda r, g, b: r > 150 and g > 150
+        actual_pixels = caption_pixels(actual, bright)
+        target_pixels = caption_pixels(target, bright)
+        assert len(actual_pixels & target_pixels) / len(actual_pixels | target_pixels) > 0.9

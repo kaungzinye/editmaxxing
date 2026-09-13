@@ -661,7 +661,7 @@
       "preset": "speech_consistent"
     },
     "caption_style": {
-      "preset": "classic_box",
+      "preset": "spoken_outline",
       "position": {
         "x": 0.44,
         "y": 0.7
@@ -676,19 +676,27 @@
         "words": [
           {
             "word_id": "w_f78af41e70f9be07_0",
-            "text": "Clear"
+            "text": "Clear",
+            "start_ms": 150,
+            "end_ms": 445
           },
           {
             "word_id": "w_f78af41e70f9be07_1",
-            "text": "audio"
+            "text": "audio",
+            "start_ms": 510,
+            "end_ms": 805
           },
           {
             "word_id": "w_f78af41e70f9be07_2",
-            "text": "holds"
+            "text": "holds",
+            "start_ms": 870,
+            "end_ms": 1165
           },
           {
             "word_id": "w_f78af41e70f9be07_3",
-            "text": "attention."
+            "text": "attention.",
+            "start_ms": 1230,
+            "end_ms": 1525
           }
         ],
         "emphasis_word_id": "w_f78af41e70f9be07_3"
@@ -701,11 +709,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_0",
-            "text": "Clear"
+            "text": "Clear",
+            "start_ms": 1825,
+            "end_ms": 2415
           },
           {
             "word_id": "w_eaecee90301162c8_1",
-            "text": "audio"
+            "text": "audio",
+            "start_ms": 2545,
+            "end_ms": 3135
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_1"
@@ -718,11 +730,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_2",
-            "text": "holds"
+            "text": "holds",
+            "start_ms": 3265,
+            "end_ms": 3855
           },
           {
             "word_id": "w_eaecee90301162c8_3",
-            "text": "attention."
+            "text": "attention.",
+            "start_ms": 3985,
+            "end_ms": 4575
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_3"
@@ -735,11 +751,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_4",
-            "text": "Trim"
+            "text": "Trim",
+            "start_ms": 4875,
+            "end_ms": 5465
           },
           {
             "word_id": "w_eaecee90301162c8_5",
-            "text": "pauses"
+            "text": "pauses",
+            "start_ms": 5595,
+            "end_ms": 6185
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_5"
@@ -752,11 +772,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_6",
-            "text": "between"
+            "text": "between",
+            "start_ms": 6315,
+            "end_ms": 6905
           },
           {
             "word_id": "w_eaecee90301162c8_7",
-            "text": "ideas."
+            "text": "ideas.",
+            "start_ms": 7035,
+            "end_ms": 7625
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_6"
@@ -769,11 +793,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_8",
-            "text": "Put"
+            "text": "Put",
+            "start_ms": 7925,
+            "end_ms": 8515
           },
           {
             "word_id": "w_eaecee90301162c8_9",
-            "text": "your"
+            "text": "your",
+            "start_ms": 8645,
+            "end_ms": 9235
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_9"
@@ -786,11 +814,15 @@
         "words": [
           {
             "word_id": "w_eaecee90301162c8_10",
-            "text": "hook"
+            "text": "hook",
+            "start_ms": 9365,
+            "end_ms": 9955
           },
           {
             "word_id": "w_eaecee90301162c8_11",
-            "text": "first."
+            "text": "first.",
+            "start_ms": 10085,
+            "end_ms": 10675
           }
         ],
         "emphasis_word_id": "w_eaecee90301162c8_11"
