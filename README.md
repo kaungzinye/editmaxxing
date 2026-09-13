@@ -61,6 +61,7 @@ Projects receive opaque bearer tokens. Media URLs expire and refresh through pro
 
 ## Integration references
 
+- [Mobile filming and hook-selection frontend](clients/mobile/README.md) — film, select hooks, film hooks, and preview final combinations. This Expo UI uses platform fonts and labeled demo processing until backend integration; [handoff notes](clients/mobile/INTEGRATION.md) document the boundaries.
 - [Product plan and ownership](PLAN.md)
 - [API routes, transport, and concurrency](docs/API.md)
 - [Shared TypeScript contracts](contracts/plan.ts)
