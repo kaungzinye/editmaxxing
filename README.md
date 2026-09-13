@@ -11,4 +11,4 @@ This repository contains the product plan, API contract, shared TypeScript types
 
 Stack: Expo with Expo Router, FastAPI, ffmpeg, hosted Whisper transcription, and `gpt-6-astra` analysis. Deployment target: Railway backend and Expo web app.
 
-Kaung owns the backend and rendering. Vanessa owns the Expo app and hook templates.
+Kaung owns the backend and rendering. Vanessa owns the Expo app and visual hook title UI.
